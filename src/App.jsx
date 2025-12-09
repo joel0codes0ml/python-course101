@@ -1,409 +1,138 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
+import { loadPyodide } from "pyodide";
 
-const LESSONS = [
-  {
-    id: 1,
-    title: "Introduction to Python & Setup",
-    lesson: "What is Python? Installing Python, using REPL, VS Code, and the course structure.",
-    exercise: "Write a Python program that prints \"Hello, world!\"",
-    starter: "print(\"Hello, world!\")",
-  },
-  {
-    id: 2,
-    title: "Variables and Types",
-    lesson: "Numbers, strings, booleans. Naming variables and simple assignments.",
-    exercise: "Create two variables (a, b). Assign numbers and print their sum.",
-    starter: "a = 5\nb = 7\nprint(a + b)",
-  },
-  // ... add all 40 lessons here
-  {
-    id: 3,
-    title: "Basic String Operations",
-    lesson: "Concatenation, repetition, length, indexing, simple methods (upper, lower).",
-    exercise: "Given a name variable, print a greeting with the name uppercased.",
-    starter: "name = 'Alice'\nprint('Hello, ' + name.upper())",
-  },
-  {
-    id: 4,
-    title: "Input and Output",
-    lesson: "Reading from input(), converting types, and formatted output (f-strings).",
-    exercise: "Ask the user for their age and print 'You are X years old'.",
-    starter: "age = input('Enter your age: ')\nprint(f'You are {age} years old')",
-  },
-  {
-    id: 5,
-    title: "Control Flow: if / else",
-    lesson: "if, elif, else — making decisions in code.",
-    exercise: "Read a number and print whether it is positive, negative, or zero.",
-    starter: "n = int(input('Number: '))\nif n > 0:\n    print('Positive')\nelif n < 0:\n    print('Negative')\nelse:\n    print('Zero')",
-  },
-  {
-    id: 6,
-    title: "Loops: for",
-    lesson: "for loops over ranges and collections.",
-    exercise: "Print numbers from 1 to 5 using a for loop.",
-    starter: "for i in range(1,6):\n    print(i)",
-  },
-  {
-    id: 7,
-    title: "Loops: while",
-    lesson: "while loops and guarding against infinite loops.",
-    exercise: "Use a while loop to sum numbers from 1 to 10.",
-    starter: "i = 1\nsum = 0\nwhile i <= 10:\n    sum += i\n    i += 1\nprint(sum)",
-  },
-  {
-    id: 8,
-    title: "Collections: Lists",
-    lesson: "Creating, indexing, slicing, appending, removing items.",
-    exercise: "Create a list of 3 fruits and print the second fruit.",
-    starter: "fruits = ['apple','banana','cherry']\nprint(fruits[1])",
-  },
-  {
-    id: 9,
-    title: "Collections: Tuples & Sets",
-    lesson: "Immutability (tuple) and uniqueness (set).",
-    exercise: "Create a tuple and attempt to change an element (observe error).",
-    starter: "t = (1,2,3)\nprint(t)\n# t[0] = 5  # this would raise a TypeError",
-  },
-  {
-    id: 10,
-    title: "Collections: Dictionaries",
-    lesson: "Key-value mapping, accessing, adding, iterating keys/values.",
-    exercise: "Create a dict for a person (name, age) and print the age.",
-    starter: "person = {'name':'John','age':30}\nprint(person['age'])",
-  },
-  {
-    id: 11,
-    title: "Functions: Defining and Calling",
-    lesson: "def, return, parameters, and simple examples.",
-    exercise: "Write a function add(a,b) that returns the sum.",
-    starter: "def add(a,b):\n    return a + b\nprint(add(2,3))",
-  },
-  {
-    id: 12,
-    title: "Scope & Lifetime",
-    lesson: "Local vs global variables, parameter passing.",
-    exercise: "Show that changing a local variable doesn't affect the global one.",
-    starter: "x = 10\ndef f():\n    x = 5\n    print('inside', x)\n\nf()\nprint('outside', x)",
-  },
-  {
-    id: 13,
-    title: "Error Handling: try/except",
-    lesson: "Catching exceptions and basic debugging strategies.",
-    exercise: "Read an int from input, handle ValueError if conversion fails.",
-    starter: "try:\n    n = int(input('Enter number: '))\n    print(n)\nexcept ValueError:\n    print('Not a valid integer')",
-  },
-  {
-    id: 14,
-    title: "File I/O Basics",
-    lesson: "open, read, write, with context managers.",
-    exercise: "Write 'Hello' to a file and read it back.",
-    starter: "with open('hello.txt','w') as f:\n    f.write('Hello')\nwith open('hello.txt') as f:\n    print(f.read())",
-  },
-  {
-    id: 15,
-    title: "List Comprehensions",
-    lesson: "Compact way to build lists.",
-    exercise: "Create a list of squares from 1 to 5 using a comprehension.",
-    starter: "squares = [x*x for x in range(1,6)]\nprint(squares)",
-  },
-  {
-    id: 16,
-    title: "String Formatting & Methods",
-    lesson: "f-strings, format(), common string methods.",
-    exercise: "Format a float to 2 decimal places inside a sentence.",
-    starter: "pi = 3.14159\nprint(f'Pi is {pi:.2f}')",
-  },
-  {
-    id: 17,
-    title: "Modules and Imports",
-    lesson: "Using math, random, creating your own modules.",
-    exercise: "Import math and print math.sqrt(16).",
-    starter: "import math\nprint(math.sqrt(16))",
-  },
-  {
-    id: 18,
-    title: "Virtual Environments & pip",
-    lesson: "venv, installing packages with pip, basic project layout.",
-    exercise: "Create a requirements.txt for one package (example: requests).",
-    starter: "# requirements.txt\nrequests==2.31.0",
-  },
-  {
-    id: 19,
-    title: "Basic OOP: Classes & Objects",
-    lesson: "Defining classes, __init__, methods, attributes.",
-    exercise: "Define a Dog class with speak() method and instantiate it.",
-    starter: "class Dog:\n    def __init__(self,name):\n        self.name = name\n    def speak(self):\n        return 'Woof'\n\nd = Dog('Rex')\nprint(d.name, d.speak())",
-  },
-  {
-    id: 20,
-    title: "OOP: Inheritance and Polymorphism",
-    lesson: "Subclassing and method overriding.",
-    exercise: "Create a Cat subclass of Animal and override speak().",
-    starter: "class Animal:\n    def speak(self):\n        return ''\n\nclass Cat(Animal):\n    def speak(self):\n        return 'Meow'\n\nprint(Cat().speak())",
-  },
-  {
-    id: 21,
-    title: "Iterators & Generators",
-    lesson: "iter(), next(), yield and memory-efficient loops.",
-    exercise: "Write a generator that yields first n even numbers.",
-    starter: "def evens(n):\n    i = 0\n    while i < n:\n        yield 2*i\n        i += 1\n\nfor e in evens(5):\n    print(e)",
-  },
-  {
-    id: 22,
-    title: "Lambda, map, filter, reduce",
-    lesson: "Anonymous functions and functional tools.",
-    exercise: "Use map to square a list of numbers.",
-    starter: "nums = [1,2,3]\nprint(list(map(lambda x: x*x, nums)))",
-  },
-  {
-    id: 23,
-    title: "Working with JSON",
-    lesson: "json.loads, json.dumps and common use cases.",
-    exercise: "Serialize a dict to JSON string and parse it back.",
-    starter: "import json\nobj = {'a':1}\ns = json.dumps(obj)\nprint(json.loads(s))",
-  },
-  {
-    id: 24,
-    title: "HTTP Requests with requests",
-    lesson: "GET/POST basics using requests (note: CORS on browser).",
-    exercise: "Show how to GET 'https://httpbin.org/get' (server-side example).",
-    starter: "import requests\nres = requests.get('https://httpbin.org/get')\nprint(res.status_code)",
-  },
-  {
-    id: 25,
-    title: "Testing Basics with unittest",
-    lesson: "Writing simple unit tests and running them.",
-    exercise: "Write a test that checks add(2,3) == 5.",
-    starter: "import unittest\n\ndef add(a,b):\n    return a+b\n\nclass TestAdd(unittest.TestCase):\n    def test_add(self):\n        self.assertEqual(add(2,3),5)\n\nif __name__ == '__main__':\n    unittest.main()",
-  },
-  {
-    id: 26,
-    title: "Debugging Techniques",
-    lesson: "print debugging, using pdb, and reading tracebacks.",
-    exercise: "Introduce a bug in a short function and fix it using prints.",
-    starter: "def inc(x):\n    return x + 1\n\nprint(inc(4))",
-  },
-  {
-    id: 27,
-    title: "Working with Dates & Times",
-    lesson: "datetime module usage and formatting dates.",
-    exercise: "Print today's date in YYYY-MM-DD format.",
-    starter: "from datetime import date\nprint(date.today().isoformat())",
-  },
-  {
-    id: 28,
-    title: "Virtual DOM & Web Integration (brief)",
-    lesson: "How Python can power web backends (Flask/Django) — overview.",
-    exercise: "Sketch (pseudo) a small Flask app returning 'Hello'.",
-    starter: "from flask import Flask\napp = Flask(__name__)\n\n@app.route('/')\ndef home():\n    return 'Hello'",
-  },
-  {
-    id: 29,
-    title: "Databases Basics",
-    lesson: "SQLite usage with sqlite3 and simple CRUD.",
-    exercise: "Create a SQLite table and insert one row.",
-    starter: "import sqlite3\nconn = sqlite3.connect(':memory:')\nc = conn.cursor()\nc.execute('CREATE TABLE t(x int)')\nc.execute('INSERT INTO t VALUES(1)')\nconn.commit()",
-  },
-  {
-    id: 30,
-    title: "Virtualization & Deployment Overview",
-    lesson: "Containers (Docker) and simple deployment ideas (Heroku/Vercel).",
-    exercise: "Write a Dockerfile for a minimal Flask app (pseudo).",
-    starter: "# Dockerfile\nFROM python:3.11-slim\nWORKDIR /app\nCOPY . .\nRUN pip install -r requirements.txt\nCMD ['gunicorn','app:app']",
-  },
-  {
-    id: 31,
-    title: "Web Scraping fundamentals",
-    lesson: "BeautifulSoup basics and respectful scraping rules.",
-    exercise: "Parse a small HTML string and extract text from <p> tags.",
-    starter: "from bs4 import BeautifulSoup\nhtml = '<p>Hello</p>'\nsoup = BeautifulSoup(html, 'html.parser')\nprint(soup.p.text)",
-  },
-  {
-    id: 32,
-    title: "Concurrency: threading & asyncio (intro)",
-    lesson: "When to use threads vs asyncio; simple examples.",
-    exercise: "Write a simple asyncio coroutine that waits and prints.",
-    starter: "import asyncio\nasync def main():\n    await asyncio.sleep(0.1)\n    print('done')\n\nasyncio.run(main())",
-  },
-  {
-    id: 33,
-    title: "Packaging & setuptools",
-    lesson: "Creating setup.py / pyproject.toml and packaging basics.",
-    exercise: "Add a minimal pyproject.toml example (name, version).",
-    starter: "# pyproject.toml\n[project]\nname = 'mypkg'\nversion = '0.1.0'",
-  },
-  {
-    id: 34,
-    title: "Security Basics for Python Apps",
-    lesson: "Input validation, avoid eval, basic secrets handling.",
-    exercise: "Show why eval(user_input) is dangerous with an example.",
-    starter: "user = '2+2'\n# eval(user)  # dangerous in real apps",
-  },
-  {
-    id: 35,
-    title: "Data Handling with pandas (intro)",
-    lesson: "Reading CSV and simple DataFrame ops (overview).",
-    exercise: "Create a DataFrame from a dict and show head().",
-    starter: "import pandas as pd\ndf = pd.DataFrame({'a':[1,2]})\nprint(df.head())",
-  },
-  {
-    id: 36,
-    title: "Visualization overview (matplotlib)",
-    lesson: "Plotting simple charts and saving images.",
-    exercise: "Plot x=[1,2,3] vs y=[1,4,9] (pseudo code).",
-    starter: "import matplotlib.pyplot as plt\nplt.plot([1,2,3],[1,4,9])\nplt.savefig('plot.png')",
-  },
-  {
-    id: 37,
-    title: "Working with CSV & Excel",
-    lesson: "csv module and openpyxl basics.",
-    exercise: "Read a CSV file and print rows as lists.",
-    starter: "import csv\nwith open('data.csv') as f:\n    reader = csv.reader(f)\n    for r in reader:\n        print(r)",
-  },
-  {
-    id: 38,
-    title: "APIs: Building & Consuming",
-    lesson: "REST basics and using Flask/FastAPI for endpoints.",
-    exercise: "Create a simple endpoint returning JSON (pseudo).",
-    starter: "from flask import Flask, jsonify\napp = Flask(__name__)\n@app.route('/api')\ndef api():\n    return jsonify({'ok':True})",
-  },
-  {
-    id: 39,
-    title: "Final Project: Put it together",
-    lesson: "Design a small project: CLI todo app or simple web API.",
-    exercise: "Plan (write) the steps for a todo CLI app and implement add/list.",
-    starter: "# pseudo-starter for todo app\ntodos = []\ndef add(todo):\n    todos.append(todo)\n\nadd('Buy milk')\nprint(todos)",
-  },
-  {
-    id: 40,
-    title: "Next steps & Learning Path",
-    lesson: "How to keep learning: algorithms, system design, open source.",
-    exercise: "Write a learning plan for the next 3 months (topics + projects).",
-    starter: "# Example plan:\n# Month 1: Data structures\n# Month 2: Small web project\n# Month 3: Contribute to open source",
-  },
+// 40 beginner Python lessons
+const lessons = [
+  { title: "Lesson 1: Introduction to Python", content: "Python is a high-level programming language.", starterCode: `print("Hello World")` },
+  { title: "Lesson 2: Variables", content: "Variables store data.", starterCode: `x = 5\nprint(x)` },
+  { title: "Lesson 3: Data Types", content: "Python has int, float, str, bool, list, tuple, dict.", starterCode: `a = 10\nb = 3.14\nc = "Hello"\nprint(a, b, c)` },
+  { title: "Lesson 4: Lists", content: "Lists store multiple values and are mutable.", starterCode: `numbers = [1,2,3,4,5]\nprint(numbers)` },
+  { title: "Lesson 5: Tuples", content: "Tuples are immutable lists.", starterCode: `colors = ("red","green","blue")\nprint(colors)` },
+  { title: "Lesson 6: Dictionaries", content: "Dictionaries store key-value pairs.", starterCode: `person = {"name":"John","age":25}\nprint(person)` },
+  { title: "Lesson 7: Booleans", content: "Boolean values: True or False.", starterCode: `is_python_fun = True\nprint(is_python_fun)` },
+  { title: "Lesson 8: Arithmetic Operators", content: "Operators: +, -, *, /, %, //, **", starterCode: `a = 10\nb = 3\nprint(a+b, a-b, a*b, a/b)` },
+  { title: "Lesson 9: Comparison Operators", content: "Operators: ==, !=, >, <, >=, <=", starterCode: `print(5>3, 5==5, 3!=4)` },
+  { title: "Lesson 10: Logical Operators", content: "Operators: and, or, not", starterCode: `print(True and False)\nprint(True or False)\nprint(not True)` },
+  { title: "Lesson 11: If Statements", content: "Conditional statements using if, elif, else.", starterCode: `x = 10\nif x > 5:\n    print("x > 5")\nelse:\n    print("x <= 5")` },
+  { title: "Lesson 12: Nested If", content: "If statements can be nested.", starterCode: `x = 15\nif x > 10:\n    if x < 20:\n        print("x is between 10 and 20")` },
+  { title: "Lesson 13: For Loops", content: "For loops iterate over sequences.", starterCode: `for i in range(5):\n    print(i)` },
+  { title: "Lesson 14: While Loops", content: "While loops run while condition is True.", starterCode: `i = 0\nwhile i<5:\n    print(i)\n    i += 1` },
+  { title: "Lesson 15: Break and Continue", content: "Break exits loop, continue skips iteration.", starterCode: `for i in range(5):\n    if i==3:\n        break\n    print(i)` },
+  { title: "Lesson 16: Functions", content: "Functions group reusable code.", starterCode: `def greet(name):\n    print("Hello", name)\ngreet("Python")` },
+  { title: "Lesson 17: Function Parameters", content: "Functions can take parameters.", starterCode: `def add(a,b):\n    return a+b\nprint(add(3,4))` },
+  { title: "Lesson 18: Return Values", content: "Use return to get value from function.", starterCode: `def square(x):\n    return x*x\nprint(square(5))` },
+  { title: "Lesson 19: Default Parameters", content: "Functions can have default values.", starterCode: `def greet(name="Python"):\n    print("Hello", name)\ngreet()` },
+  { title: "Lesson 20: Keyword Arguments", content: "Call functions using keywords.", starterCode: `def greet(name, age):\n    print(name, age)\ngreet(age=25, name="John")` },
+  { title: "Lesson 21: *args", content: "Functions can take variable number of arguments.", starterCode: `def sum_all(*args):\n    return sum(args)\nprint(sum_all(1,2,3,4))` },
+  { title: "Lesson 22: **kwargs", content: "Functions can take variable keyword arguments.", starterCode: `def info(**kwargs):\n    print(kwargs)\ninfo(name="John", age=25)` },
+  { title: "Lesson 23: Lists - Indexing", content: "Access elements by index.", starterCode: `nums = [10,20,30]\nprint(nums[0], nums[-1])` },
+  { title: "Lesson 24: Lists - Slicing", content: "Get sublists using slicing.", starterCode: `nums = [10,20,30,40,50]\nprint(nums[1:4])` },
+  { title: "Lesson 25: List Methods", content: "Methods: append, remove, pop, sort, reverse.", starterCode: `nums = [3,1,2]\nnums.sort()\nprint(nums)` },
+  { title: "Lesson 26: String Basics", content: "Strings are text. Can use quotes.", starterCode: `text = "Hello"\nprint(text)` },
+  { title: "Lesson 27: String Methods", content: "Common: upper, lower, split, strip.", starterCode: `text = "hello world"\nprint(text.upper())` },
+  { title: "Lesson 28: String Formatting", content: "Use f-strings to insert variables.", starterCode: `name = "John"\nprint(f"Hello {name}")` },
+  { title: "Lesson 29: Importing Modules", content: "Use import to use libraries.", starterCode: `import math\nprint(math.sqrt(16))` },
+  { title: "Lesson 30: Random Numbers", content: "Use random module.", starterCode: `import random\nprint(random.randint(1,10))` },
+  { title: "Lesson 31: Exception Handling", content: "Use try/except for errors.", starterCode: `try:\n    print(5/0)\nexcept ZeroDivisionError:\n    print("Cannot divide by zero")` },
+  { title: "Lesson 32: File Handling", content: "Read/write files using open.", starterCode: `with open("test.txt","w") as f:\n    f.write("Hello")` },
+  { title: "Lesson 33: Lists Comprehension", content: "Compact syntax to create lists.", starterCode: `squares = [x*x for x in range(5)]\nprint(squares)` },
+  { title: "Lesson 34: Dictionaries - Access", content: "Get values using keys.", starterCode: `person = {"name":"John"}\nprint(person["name"])` },
+  { title: "Lesson 35: Dictionaries - Methods", content: "Common: keys, values, items.", starterCode: `person = {"a":1,"b":2}\nprint(person.keys())` },
+  { title: "Lesson 36: Sets", content: "Sets store unique items.", starterCode: `s = {1,2,2,3}\nprint(s)` },
+  { title: "Lesson 37: Tuples - Unpacking", content: "Unpack tuple elements.", starterCode: `t = (1,2,3)\na,b,c = t\nprint(a,b,c)` },
+  { title: "Lesson 38: Boolean Logic", content: "Use and/or/not in conditions.", starterCode: `a = True\nb = False\nprint(a and b, a or b, not a)` },
+  { title: "Lesson 39: Loops with else", content: "Python allows else after loops.", starterCode: `for i in range(3):\n    print(i)\nelse:\n    print("Done")` },
+  { title: "Lesson 40: Recap & Practice", content: "Combine loops, functions, variables.", starterCode: `def multiply(a,b):\n    return a*b\nprint(multiply(3,4))`}
 ];
 
+function App() {
+  const [currentLesson, setCurrentLesson] = useState(0);
+  const [code, setCode] = useState(lessons[0].starterCode);
+  const [output, setOutput] = useState("");
+  const [pyodide, setPyodide] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-
-export default function PythonCourseApp() {
-  const [selected, setSelected] = useState(LESSONS[0]);
-  const [code, setCode] = useState(selected.starter);
-  const [output, setOutput] = useState("-- output will appear here --");
-  const pyodideRef = useRef(null);
-  const lessonRef = useRef(null); // ref for scrolling to lesson
-
+  // Load Pyodide
   useEffect(() => {
-    setCode(selected.starter);
-    setOutput("-- output will appear here --");
-    
-    // Scroll lesson into view when selected changes
-    lessonRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [selected]);
-
-  async function loadPyodideIfNeeded() {
-    if (pyodideRef.current) return pyodideRef.current;
-    if (window.loadPyodide) {
-      pyodideRef.current = await window.loadPyodide({
-        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/",
-      });
-      return pyodideRef.current;
+    async function load() {
+      const py = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/" });
+      setPyodide(py);
+      setLoading(false);
     }
-    return null;
-  }
+    load();
+  }, []);
 
-  async function runCodeInPyodide(src) {
-    setOutput("Running...");
+  const handleLessonClick = (index) => {
+    setCurrentLesson(index);
+    setCode(lessons[index].starterCode);
+    setOutput("");
+  };
+
+  const runCode = async () => {
+    if (!pyodide) return;
     try {
-      const pyodide = await loadPyodideIfNeeded();
-      if (!pyodide) {
-        setOutput(
-          "Pyodide not loaded — include the pyodide script in index.html"
-        );
-        return;
-      }
-      let result = await pyodide.runPythonAsync(
-        `import sys\nfrom js import console\n__out = None\ntry:\n    import io\n    buf = io.StringIO()\n    sys.stdout = buf\n    sys.stderr = buf\n    exec('''${src.replace(/`/g, "\\`")}''')\n    __out = buf.getvalue()\nfinally:\n    sys.stdout = sys.__stdout__\n    sys.stderr = sys.__stderr__\n__out`
-      );
-      setOutput(String(result));
-    } catch (e) {
-      setOutput(String(e));
+      const result = await pyodide.runPythonAsync(code);
+      setOutput(result ?? "");
+    } catch (err) {
+      setOutput(err.toString());
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen flex bg-gray-50 text-slate-900">
+    <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-80 border-r p-4 bg-white h-screen overflow-auto">
-        <h2 className="text-xl font-bold mb-4">
-          Python — 40 Lesson Beginner Course
-        </h2>
-        <div className="space-y-2">
-          {LESSONS.map((l) => (
-            <button
-              key={l.id}
-              onClick={() => setSelected(l)}
-              className={`w-full text-left px-3 py-2 rounded-md hover:bg-slate-100 ${
-                selected.id === l.id ? "bg-slate-100 font-semibold" : ""
+      <div className="w-64 bg-gray-800 text-white p-4 overflow-y-auto">
+        <h2 className="text-xl font-bold mb-4">Python Lessons</h2>
+        <ul>
+          {lessons.map((lesson, idx) => (
+            <li
+              key={idx}
+              onClick={() => handleLessonClick(idx)}
+              className={`cursor-pointer mb-2 p-2 rounded hover:bg-gray-700 ${
+                idx === currentLesson ? "bg-gray-700 font-bold" : ""
               }`}
             >
-              {l.id}. {l.title}
-            </button>
+              {lesson.title}
+            </li>
           ))}
-        </div>
-      </aside>
+        </ul>
+      </div>
 
       {/* Main content */}
-      <main className="flex-1 p-6 grid grid-cols-3 gap-6">
-        {/* Lesson panel */}
-        <section
-          ref={lessonRef}
-          className="col-span-1 bg-white p-4 rounded shadow-sm overflow-auto"
-        >
-          <h3 className="text-lg font-semibold">Lesson</h3>
-          <h4 className="mt-2 font-bold">{selected.title}</h4>
-          <p className="mt-2 text-sm whitespace-pre-line">{selected.lesson}</p>
+      <div className="flex-1 p-6 flex flex-col">
+        <h1 className="text-2xl font-bold mb-4">{lessons[currentLesson].title}</h1>
+        <p className="mb-4">{lessons[currentLesson].content}</p>
 
-          <h5 className="mt-4 font-semibold">Exercise</h5>
-          <p className="mt-1 text-sm whitespace-pre-line">{selected.exercise}</p>
-
-          <div className="mt-4">
-            <button
-              onClick={() => runCodeInPyodide(code)}
-              className="px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-            >
-              Run
-            </button>
-            <button
-              onClick={() => {
-                setCode(selected.starter);
-                setOutput("-- output will appear here --");
-              }}
-              className="ml-2 px-3 py-2 rounded border"
-            >
-              Reset
-            </button>
+        <div className="flex flex-1 gap-4">
+          {/* Editor */}
+          <div className="flex-1">
+            <Editor
+              key={currentLesson} // force editor to reload on lesson switch
+              height="400px"
+              defaultLanguage="python"
+              theme="vs-dark"
+              value={code}
+              onChange={(value) => setCode(value)}
+            />
           </div>
 
-          <div className="mt-4 bg-slate-50 p-3 rounded h-40 overflow-auto text-xs">
-            <strong>Output</strong>
-            <pre className="whitespace-pre-wrap mt-2">{output}</pre>
+          {/* Output */}
+          <div className="flex-1 bg-gray-900 text-white p-4 rounded h-[400px] overflow-y-auto">
+            <h3 className="font-bold mb-2">Output:</h3>
+            <pre>{loading ? "Loading Pyodide..." : output}</pre>
+            <button
+              onClick={runCode}
+              className="mt-4 bg-blue-500 px-4 py-2 rounded hover:bg-blue-600"
+            >
+              Run Code
+            </button>
           </div>
-        </section>
-
-        {/* Code editor */}
-        <section className="col-span-2 bg-white p-4 rounded shadow-sm">
-          <h3 className="text-lg font-semibold mb-2">Code Editor</h3>
-          <Editor
-            height="60vh"
-            defaultLanguage="python"
-            value={code}
-            onChange={(v) => setCode(v)}
-            options={{ minimap: { enabled: false }, fontSize: 14 }}
-          />
-        </section>
-      </main>
+        </div>
+      </div>
     </div>
   );
 }
+
+export default App;
+
