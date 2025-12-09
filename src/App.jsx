@@ -108,7 +108,7 @@ function App() {
           {/* Editor */}
           <div className="flex-1">
             <Editor
-              key={currentLesson} // force editor to reload on lesson switch
+              key={currentLesson} // forces editor to reload on lesson switch
               height="400px"
               defaultLanguage="python"
               theme="vs-dark"
@@ -135,4 +135,5 @@ function App() {
 }
 
 export default App;
+
 
