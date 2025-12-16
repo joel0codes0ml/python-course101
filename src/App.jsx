@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
-import { loadPyodide } from "pyodide";
 
 // 40 beginner Python lessons
 const lessons = [
@@ -29,53 +28,68 @@ const lessons = [
   { title: "Lesson 23: Lists - Indexing", content: "Access elements by index.", starterCode: `nums = [10,20,30]\nprint(nums[0], nums[-1])` },
   { title: "Lesson 24: Lists - Slicing", content: "Get sublists using slicing.", starterCode: `nums = [10,20,30,40,50]\nprint(nums[1:4])` },
   { title: "Lesson 25: List Methods", content: "Methods: append, remove, pop, sort, reverse.", starterCode: `nums = [3,1,2]\nnums.sort()\nprint(nums)` },
-  { title: "Lesson 26: String Basics", content: "Strings are text. Can use quotes.", starterCode: `text = "Hello"\nprint(text)` },
-  { title: "Lesson 27: String Methods", content: "Common: upper, lower, split, strip.", starterCode: `text = "hello world"\nprint(text.upper())` },
-  { title: "Lesson 28: String Formatting", content: "Use f-strings to insert variables.", starterCode: `name = "John"\nprint(f"Hello {name}")` },
-  { title: "Lesson 29: Importing Modules", content: "Use import to use libraries.", starterCode: `import math\nprint(math.sqrt(16))` },
-  { title: "Lesson 30: Random Numbers", content: "Use random module.", starterCode: `import random\nprint(random.randint(1,10))` },
-  { title: "Lesson 31: Exception Handling", content: "Use try/except for errors.", starterCode: `try:\n    print(5/0)\nexcept ZeroDivisionError:\n    print("Cannot divide by zero")` },
-  { title: "Lesson 32: File Handling", content: "Read/write files using open.", starterCode: `with open("test.txt","w") as f:\n    f.write("Hello")` },
-  { title: "Lesson 33: Lists Comprehension", content: "Compact syntax to create lists.", starterCode: `squares = [x*x for x in range(5)]\nprint(squares)` },
-  { title: "Lesson 34: Dictionaries - Access", content: "Get values using keys.", starterCode: `person = {"name":"John"}\nprint(person["name"])` },
-  { title: "Lesson 35: Dictionaries - Methods", content: "Common: keys, values, items.", starterCode: `person = {"a":1,"b":2}\nprint(person.keys())` },
-  { title: "Lesson 36: Sets", content: "Sets store unique items.", starterCode: `s = {1,2,2,3}\nprint(s)` },
-  { title: "Lesson 37: Tuples - Unpacking", content: "Unpack tuple elements.", starterCode: `t = (1,2,3)\na,b,c = t\nprint(a,b,c)` },
-  { title: "Lesson 38: Boolean Logic", content: "Use and/or/not in conditions.", starterCode: `a = True\nb = False\nprint(a and b, a or b, not a)` },
-  { title: "Lesson 39: Loops with else", content: "Python allows else after loops.", starterCode: `for i in range(3):\n    print(i)\nelse:\n    print("Done")` },
-  { title: "Lesson 40: Recap & Practice", content: "Combine loops, functions, variables.", starterCode: `def multiply(a,b):\n    return a*b\nprint(multiply(3,4))`}
+  { title: "Lesson 26: String Basics", content: "Strings are text.", starterCode: `text = "Hello"\nprint(text)` },
+  { title: "Lesson 27: String Methods", content: "upper, lower, split, strip.", starterCode: `text = "hello world"\nprint(text.upper())` },
+  { title: "Lesson 28: String Formatting", content: "Use f-strings.", starterCode: `name = "John"\nprint(f"Hello {name}")` },
+  { title: "Lesson 29: Importing Modules", content: "Use import.", starterCode: `import math\nprint(math.sqrt(16))` },
+  { title: "Lesson 30: Random Numbers", content: "Use random.", starterCode: `import random\nprint(random.randint(1,10))` },
+  { title: "Lesson 31: Exception Handling", content: "Use try/except.", starterCode: `try:\n    print(5/0)\nexcept ZeroDivisionError:\n    print("Cannot divide by zero")` },
+  { title: "Lesson 32: File Handling", content: "Read/write files.", starterCode: `with open("test.txt","w") as f:\n    f.write("Hello")` },
+  { title: "Lesson 33: List Comprehension", content: "Compact lists.", starterCode: `squares = [x*x for x in range(5)]\nprint(squares)` },
+  { title: "Lesson 34: Dictionaries - Access", content: "Get values by key.", starterCode: `person = {"name":"John"}\nprint(person["name"])` },
+  { title: "Lesson 35: Dictionaries - Methods", content: "keys, values, items.", starterCode: `person = {"a":1,"b":2}\nprint(person.keys())` },
+  { title: "Lesson 36: Sets", content: "Unique items.", starterCode: `s = {1,2,2,3}\nprint(s)` },
+  { title: "Lesson 37: Tuple Unpacking", content: "Unpack values.", starterCode: `t = (1,2,3)\na,b,c = t\nprint(a,b,c)` },
+  { title: "Lesson 38: Boolean Logic", content: "and / or / not.", starterCode: `a = True\nb = False\nprint(a and b, a or b, not a)` },
+  { title: "Lesson 39: Loops with else", content: "else after loop.", starterCode: `for i in range(3):\n    print(i)\nelse:\n    print("Done")` },
+  { title: "Lesson 40: Recap & Practice", content: "Combine concepts.", starterCode: `def multiply(a,b):\n    return a*b\nprint(multiply(3,4))` },
 ];
 
-function App() {
-  const [currentLesson, setCurrentLesson] = useState(0);
+export default function App() {
+  const [current, setCurrent] = useState(0);
   const [code, setCode] = useState(lessons[0].starterCode);
-  const [output, setOutput] = useState("");
+  const [output, setOutput] = useState("Output will appear here");
   const [pyodide, setPyodide] = useState(null);
   const [loading, setLoading] = useState(true);
+  const contentRef = useRef(null);
 
-  // Load Pyodide
+  // Load Pyodide (browser-safe)
   useEffect(() => {
-    async function load() {
-      const py = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/" });
+    const load = async () => {
+      const py = await window.loadPyodide({
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/",
+      });
       setPyodide(py);
       setLoading(false);
-    }
+    };
     load();
   }, []);
 
-  const handleLessonClick = (index) => {
-    setCurrentLesson(index);
-    setCode(lessons[index].starterCode);
-    setOutput("");
+  const selectLesson = (i) => {
+    setCurrent(i);
+    setCode(lessons[i].starterCode);
+    setOutput("Output will appear here");
+    contentRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const runCode = async () => {
     if (!pyodide) return;
     try {
-      const result = await pyodide.runPythonAsync(code);
-      setOutput(result ?? "");
-    } catch (err) {
-      setOutput(err.toString());
+      const result = await pyodide.runPythonAsync(`
+import sys, io
+buf = io.StringIO()
+sys.stdout = buf
+sys.stderr = buf
+try:
+    exec("""${code.replace(/"/g, '\\"')}""")
+except Exception as e:
+    print(e)
+sys.stdout = sys.__stdout__
+buf.getvalue()
+`);
+      setOutput(result || "(no output)");
+    } catch (e) {
+      setOutput(e.toString());
     }
   };
 
@@ -84,43 +98,39 @@ function App() {
       {/* Sidebar */}
       <div className="w-64 bg-gray-800 text-white p-4 overflow-y-auto">
         <h2 className="text-xl font-bold mb-4">Python Lessons</h2>
-        <ul>
-          {lessons.map((lesson, idx) => (
-            <li
-              key={idx}
-              onClick={() => handleLessonClick(idx)}
-              className={`cursor-pointer mb-2 p-2 rounded hover:bg-gray-700 ${
-                idx === currentLesson ? "bg-gray-700 font-bold" : ""
-              }`}
-            >
-              {lesson.title}
-            </li>
-          ))}
-        </ul>
+        {lessons.map((l, i) => (
+          <div
+            key={i}
+            onClick={() => selectLesson(i)}
+            className={`p-2 mb-2 rounded cursor-pointer ${
+              i === current ? "bg-blue-600" : "hover:bg-gray-700"
+            }`}
+          >
+            {l.title}
+          </div>
+        ))}
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 p-6 flex flex-col">
-        <h1 className="text-2xl font-bold mb-4">{lessons[currentLesson].title}</h1>
-        <p className="mb-4">{lessons[currentLesson].content}</p>
+      {/* Content */}
+      <div ref={contentRef} className="flex-1 p-6 flex flex-col">
+        <h1 className="text-2xl font-bold mb-2">{lessons[current].title}</h1>
+        <p className="mb-4">{lessons[current].content}</p>
 
-        <div className="flex flex-1 gap-4">
-          {/* Editor */}
-          <div className="flex-1">
-            <Editor
-              key={currentLesson} // forces editor to reload on lesson switch
-              height="400px"
-              defaultLanguage="python"
-              theme="vs-dark"
-              value={code}
-              onChange={(value) => setCode(value)}
-            />
-          </div>
+        <div className="flex gap-4 flex-1">
+          <Editor
+            key={current}
+            height="400px"
+            defaultLanguage="python"
+            theme="vs-dark"
+            value={code}
+            onChange={(v) => setCode(v)}
+          />
 
-          {/* Output */}
-          <div className="flex-1 bg-gray-900 text-white p-4 rounded h-[400px] overflow-y-auto">
-            <h3 className="font-bold mb-2">Output:</h3>
-            <pre>{loading ? "Loading Pyodide..." : output}</pre>
+          <div className="w-1/2 bg-gray-900 text-white p-4 rounded">
+            <h3 className="font-bold mb-2">Output</h3>
+            <pre className="text-sm whitespace-pre-wrap">
+              {loading ? "Loading Python..." : output}
+            </pre>
             <button
               onClick={runCode}
               className="mt-4 bg-blue-500 px-4 py-2 rounded hover:bg-blue-600"
@@ -134,6 +144,5 @@ function App() {
   );
 }
 
-export default App;
 
 
