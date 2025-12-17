@@ -1,26 +1,34 @@
 import React, { useState, useEffect } from "react";
-import { lessons } from "./lessons"; 
-import Login from "./Login"; // 1. Import your Login component
+import { lessons as pythonLessons } from "./lessons";
+import { htmlLessons } from "./courses/html";
+import Login from "./Login";
 
 export default function App() {
   const [user, setUser] = useState(localStorage.getItem("zenin_user") || "");
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("zenin_user"));
-  
-  const [current, setCurrent] = useState(() => {
-    const saved = localStorage.getItem("zenin_progress");
-    return saved ? JSON.parse(saved) : lessons[0];
-  });
 
-  const [userCode, setUserCode] = useState(current.starterCode);
+  // course: python | html
+  const [course, setCourse] = useState("python");
+
+  const lessons = course === "python" ? pythonLessons : htmlLessons;
+
+  const [current, setCurrent] = useState(lessons[0]);
+  const [userCode, setUserCode] = useState(lessons[0].starterCode);
   const [output, setOutput] = useState("");
 
+  // Reset lesson when course changes
   useEffect(() => {
-    setUserCode(current.starterCode);
+    setCurrent(lessons[0]);
+    setUserCode(lessons[0].starterCode);
     setOutput("");
+  }, [course]);
+
+  // Save progress
+  useEffect(() => {
     if (isLoggedIn) {
-      localStorage.setItem("zenin_progress", JSON.stringify(current));
+      localStorage.setItem("zenin_progress", JSON.stringify({ course, current }));
     }
-  }, [current, isLoggedIn]);
+  }, [current, course, isLoggedIn]);
 
   const handleLogin = (name) => {
     localStorage.setItem("zenin_user", name);
@@ -30,29 +38,59 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.removeItem("zenin_user");
+    localStorage.removeItem("zenin_progress");
     setIsLoggedIn(false);
     setUser("");
   };
 
-  // 2. Use 'Login' (matches your Login.jsx export)
   if (!isLoggedIn) {
     return <Login onLogin={handleLogin} />;
   }
 
   return (
     <div style={{ display: "flex", height: "100vh", backgroundColor: "#0f172a", color: "#fff" }}>
-      {/* Sidebar */}
+      
+      {/* SIDEBAR */}
       <div style={{ width: "300px", background: "#1e293b", borderRight: "2px solid #ef4444", overflowY: "auto" }}>
+        
+        {/* LOGO */}
         <div style={{ padding: "20px", textAlign: "center", borderBottom: "1px solid #334155" }}>
-          <h2 style={{ fontFamily: "monospace", letterSpacing: "2px" }}>ZENIN<span style={{color: "#ef4444"}}>LABS</span></h2>
-          <button onClick={handleLogout} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "10px" }}>LOGOUT</button>
+          <h2 style={{ fontFamily: "monospace", letterSpacing: "2px" }}>
+            ZENIN<span style={{ color: "#ef4444" }}>LABS</span>
+          </h2>
+          <button
+            onClick={handleLogout}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#64748b",
+              cursor: "pointer",
+              fontSize: "10px"
+            }}
+          >
+            LOGOUT
+          </button>
         </div>
+
+        {/* COURSE SWITCH */}
+        <div style={{ display: "flex", gap: "8px", padding: "10px" }}>
+          <button onClick={() => setCourse("python")} style={courseBtn(course === "python")}>
+            Python
+          </button>
+          <button onClick={() => setCourse("html")} style={courseBtn(course === "html")}>
+            HTML
+          </button>
+        </div>
+
+        {/* LESSON LIST */}
         {lessons.map((l) => (
-          <div 
-            key={l.id} 
+          <div
+            key={l.id}
             onClick={() => setCurrent(l)}
-            style={{ 
-              padding: "15px", cursor: "pointer", borderBottom: "1px solid #334155",
+            style={{
+              padding: "15px",
+              cursor: "pointer",
+              borderBottom: "1px solid #334155",
               background: current.id === l.id ? "#ef444422" : "transparent",
               color: current.id === l.id ? "#ef4444" : "#fff"
             }}
@@ -62,30 +100,73 @@ export default function App() {
         ))}
       </div>
 
-      {/* Main Content */}
+      {/* MAIN CONTENT */}
       <div style={{ flex: 1, padding: "40px", overflowY: "auto" }}>
         <h1>{current.title}</h1>
-        <p style={{ background: "#1e293b", padding: "20px", borderRadius: "10px" }}>{current.content}</p>
-        
-        <textarea 
-          value={userCode} 
+
+        <p style={{ background: "#1e293b", padding: "20px", borderRadius: "10px" }}>
+          {current.content}
+        </p>
+
+        <textarea
+          value={userCode}
           onChange={(e) => setUserCode(e.target.value)}
-          style={{ width: "100%", height: "300px", background: "#000", color: "#4ade80", padding: "20px", fontFamily: "monospace", borderRadius: "10px", border: "1px solid #334155" }}
+          style={{
+            width: "100%",
+            height: "300px",
+            background: "#000",
+            color: "#4ade80",
+            padding: "20px",
+            fontFamily: "monospace",
+            borderRadius: "10px",
+            border: "1px solid #334155"
+          }}
         />
-        
-        <button 
-          onClick={() => setOutput(">>> [System]: Execution Success!")}
-          style={{ marginTop: "20px", padding: "12px 30px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "5px", fontWeight: "bold", cursor: "pointer" }}
+
+        <button
+          onClick={() => setOutput(">>> Code executed successfully")}
+          style={{
+            marginTop: "20px",
+            padding: "12px 30px",
+            background: "#ef4444",
+            color: "#fff",
+            border: "none",
+            borderRadius: "5px",
+            fontWeight: "bold",
+            cursor: "pointer"
+          }}
         >
-          RUN LOGIC ▶
+          RUN ▶
         </button>
 
         {output && (
-          <div style={{ marginTop: "20px", padding: "20px", background: "#000", color: "#4ade80", fontFamily: "monospace", borderRadius: "5px" }}>
+          <div
+            style={{
+              marginTop: "20px",
+              padding: "20px",
+              background: "#000",
+              color: "#4ade80",
+              fontFamily: "monospace",
+              borderRadius: "5px"
+            }}
+          >
             {output}
           </div>
         )}
       </div>
     </div>
   );
+}
+
+// small helper
+function courseBtn(active) {
+  return {
+    flex: 1,
+    padding: "8px",
+    background: active ? "#ef4444" : "#334155",
+    color: "#fff",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer"
+  };
 }
