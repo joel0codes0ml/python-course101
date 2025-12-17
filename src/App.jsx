@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const lessons = [
   { id: 1, title: "1: Intro to Python", level: "Beginner", content: "Python is one of the world's easiest languages. Use print() to show words on the screen.", starterCode: 'print("Hello World!")' },
@@ -45,17 +45,24 @@ const lessons = [
 
 export default function App() {
   const [selectedLesson, setSelectedLesson] = useState(lessons[0]);
+  const [userCode, setUserCode] = useState(lessons[0].starterCode);
   const [output, setOutput] = useState("");
 
+  // Update editor text when lesson changes
+  useEffect(() => {
+    setUserCode(selectedLesson.starterCode);
+    setOutput("");
+  }, [selectedLesson]);
+
   const runCode = () => {
-    setOutput(`>>> RUNNING PYTHON:\n${selectedLesson.starterCode}\n\n[Execution Finished Successfully]`);
+    setOutput(`>>> RUNNING USER CODE:\n${userCode}\n\n[Execution Finished Successfully]`);
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh", fontFamily: "sans-serif", backgroundColor: "#f3f4f6" }}>
-      {/* Sidebar - Shows all 40 Lessons */}
+    <div style={{ display: "flex", height: "100vh", fontFamily: "'Inter', sans-serif", backgroundColor: "#f3f4f6" }}>
+      {/* Sidebar */}
       <div style={{ width: "300px", borderRight: "1px solid #ddd", backgroundColor: "#fff", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "20px", background: "#1f2937", color: "white" }}>
+        <div style={{ padding: "20px", background: "#111827", color: "white" }}>
           <h3 style={{ margin: 0 }}>Python Course</h3>
           <small>{lessons.length} Lessons Total</small>
         </div>
@@ -63,42 +70,70 @@ export default function App() {
           {lessons.map((lesson) => (
             <div
               key={lesson.id}
-              onClick={() => { setSelectedLesson(lesson); setOutput(""); }}
+              onClick={() => setSelectedLesson(lesson)}
               style={{
                 padding: "12px 20px",
                 cursor: "pointer",
-                borderBottom: "1px solid #eee",
-                backgroundColor: selectedLesson.id === lesson.id ? "#e5e7eb" : "transparent"
+                borderBottom: "1px solid #f0f0f0",
+                backgroundColor: selectedLesson.id === lesson.id ? "#eef2ff" : "transparent",
+                borderLeft: selectedLesson.id === lesson.id ? "4px solid #4f46e5" : "4px solid transparent"
               }}
             >
-              <strong>{lesson.title}</strong>
-              <div style={{ fontSize: "0.7rem", color: "#666" }}>{lesson.level}</div>
+              <div style={{ fontWeight: "600", fontSize: "0.9rem" }}>{lesson.title}</div>
+              <div style={{ fontSize: "0.7rem", color: "#6b7280" }}>{lesson.level}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Content Area */}
+      {/* Main Content Area */}
       <div style={{ flex: 1, padding: "40px", overflowY: "auto" }}>
-        <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-          <h1 style={{ marginBottom: "10px" }}>{selectedLesson.title}</h1>
-          <div style={{ background: "#fff", padding: "20px", borderRadius: "8px", border: "1px solid #ddd", lineHeight: "1.6" }}>
-            {selectedLesson.content}
+        <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+          <h1 style={{ marginBottom: "10px", color: "#111827" }}>{selectedLesson.title}</h1>
+          <div style={{ background: "#fff", padding: "24px", borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", marginBottom: "30px" }}>
+            <p style={{ lineHeight: "1.7", color: "#374151", fontSize: "1.05rem" }}>{selectedLesson.content}</p>
           </div>
 
-          <div style={{ marginTop: "30px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
-              <h3>Code Editor</h3>
-              <button onClick={runCode} style={{ background: "#10b981", color: "white", border: "none", padding: "8px 20px", borderRadius: "5px", cursor: "pointer" }}>Run Code</button>
+          {/* CODE EDITOR */}
+          <div style={{ marginTop: "20px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+              <h3 style={{ margin: 0 }}>Try it Yourself:</h3>
+              <button 
+                onClick={runCode} 
+                style={{ background: "#10b981", color: "white", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", fontSize: "0.9rem" }}
+              >
+                ▶ Run Code
+              </button>
             </div>
-            <pre style={{ background: "#1e1e1e", color: "#d4d4d4", padding: "20px", borderRadius: "8px", overflowX: "auto" }}>
-              <code>{selectedLesson.starterCode}</code>
-            </pre>
+            
+            {/* Using a textarea allows the user to type and edit */}
+            <textarea
+              value={userCode}
+              onChange={(e) => setUserCode(e.target.value)}
+              spellCheck="false"
+              style={{
+                width: "100%",
+                height: "250px",
+                backgroundColor: "#1e1e1e",
+                color: "#9cdcfe",
+                fontFamily: "'Fira Code', 'Courier New', monospace",
+                fontSize: "1rem",
+                padding: "20px",
+                borderRadius: "8px",
+                border: "1px solid #333",
+                outline: "none",
+                resize: "vertical",
+                lineHeight: "1.5"
+              }}
+            />
           </div>
 
           {output && (
-            <div style={{ marginTop: "20px", background: "#000", color: "#00ff00", padding: "15px", borderRadius: "5px", fontFamily: "monospace" }}>
-              {output}
+            <div style={{ marginTop: "20px" }}>
+              <h4 style={{ color: "#4b5563", marginBottom: "10px" }}>Console Output:</h4>
+              <div style={{ background: "#000", color: "#4ade80", padding: "20px", borderRadius: "8px", fontFamily: "monospace", fontSize: "0.9rem", whiteSpace: "pre-wrap" }}>
+                {output}
+              </div>
             </div>
           )}
         </div>
