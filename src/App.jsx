@@ -287,6 +287,7 @@ export default function App() {
   const [current, setCurrent] = useState(lessons[0]);
   const [userCode, setUserCode] = useState(lessons[0].starterCode);
   const [output, setOutput] = useState("");
+  const [isError, setIsError] = useState(false);
 
   useEffect(() => {
     setUserCode(current.starterCode);
@@ -294,7 +295,31 @@ export default function App() {
   }, [current]);
 
   const runCode = () => {
-    setOutput(`>>> RUNNING:\n${userCode}\n\n[Output]: Execution Success`);
+    setIsError(false); // Reset error state
+    
+    // Check 1: Missing Quotes (e.g., print(hello) instead of print("hello"))
+    if (userCode.includes("print(") && !userCode.includes('"') && !userCode.includes("'")) {
+       setIsError(true);
+       setOutput(`  File "script.py", line 1\n    print(hello)\n               ^\nNameError: name 'hello' is not defined. Did you forget quotation marks?`);
+       return;
+    }
+
+    // Check 2: Missing Colon (e.g., if a > b instead of if a > b:)
+    if ((userCode.includes("if ") || userCode.includes("while ") || userCode.includes("def ")) && !userCode.includes(":")) {
+      setIsError(true);
+      setOutput(`  File "script.py", line 2\n    ${userCode.split('\n')[0]}\n    ^\nSyntaxError: expected ':'`);
+      return;
+    }
+
+    // Check 3: Missing Parentheses for print
+    if (userCode.includes("print ") && !userCode.includes("(")) {
+      setIsError(true);
+      setOutput(`  File "script.py", line 1\n    print "Hello"\n    ^\nSyntaxError: Missing parentheses in call to 'print'.`);
+      return;
+    }
+
+    // If no errors found
+    setOutput(`>>> RUNNING:\n${userCode}\n\n[Output]: Execution Success!`);
   };
 
   return (
@@ -345,10 +370,19 @@ export default function App() {
           </div>
 
           {output && (
-            <div style={{ marginTop: "20px", padding: "20px", background: "#000", borderLeft: "4px solid #22c55e", fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
-              {output}
-            </div>
-          )}
+  <div style={{ 
+    marginTop: "20px", 
+    padding: "20px", 
+    background: "#000", 
+    // This line makes it RED if isError is true, otherwise GREEN
+    color: isError ? "#ef4444" : "#22c55e", 
+    borderLeft: isError ? "4px solid #ef4444" : "4px solid #22c55e", 
+    fontFamily: "monospace", 
+    whiteSpace: "pre-wrap"
+  }}>
+    {output}
+  </div>
+)}
         </div>
       </div>
     </div>
