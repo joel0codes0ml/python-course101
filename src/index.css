@@ -1,9 +1,1 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
-/* Optional small styles for full height layout */
-html, body, #root {
-  height: 100%;
-  margin: 0;
-}
