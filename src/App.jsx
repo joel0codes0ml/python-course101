@@ -1,8 +1,7 @@
 import { useState } from "react";
 
 const lessons = [
-  {
-   const lessons = [
+
   {
     title: "Lesson 1: Introduction to Python",
     content: `
