@@ -1,17 +1,116 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>python-course</title>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZeninLabs HTML Lessons</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #0f172a; color: #e5e7eb; padding: 20px; }
+    .lesson-card { background: #020617; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+    textarea { width: 100%; height: 300px; border-radius: 12px; padding: 10px; font-family: monospace; font-size: 16px; }
+    button { padding: 10px 15px; border: none; border-radius: 8px; background: #38bdf8; color: #020617; font-weight: bold; cursor: pointer; margin-right: 10px; }
+    pre { background: #020617; padding: 15px; border-radius: 12px; overflow-x: auto; color: #f8fafc; }
+    .error { color: #f87171; }
+    .success { color: #4ade80; }
+    #lesson-nav { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
 
-    <!-- Pyodide (Python in browser) -->
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<div class="lesson-card" id="lesson-card">
+  <h1 id="lesson-title"></h1>
+  <p id="lesson-content"></p>
+  <div id="lesson-nav">
+    <button onclick="prevLesson()">⬅ Prev</button>
+    <button onclick="nextLesson()">Next ➡</button>
+  </div>
+  <textarea id="editor"></textarea>
+  <button onclick="runCode()">▶ Run Code</button>
+  <pre id="output">Run the code to see output...</pre>
+</div>
+
+<div class="lesson-card">
+  <h2>AI Assistant 🤖</h2>
+  <textarea id="aiInput" rows="3" placeholder="Ask for help..."></textarea>
+  <button onclick="askAI()">Ask AI</button>
+  <pre id="aiOutput"></pre>
+</div>
+
+<script>
+const htmlLessons = [
+  {title: "Lesson 1: What is HTML?", content: "HTML (HyperText Markup Language) is the language used to structure content on the web. Learn tags, elements, and attributes.", starterCode: `<!DOCTYPE html>\n<html>\n  <head>\n    <title>My First Page</title>\n  </head>\n  <body>\n    <!-- Your content here -->\n  </body>\n</html>`},
+  {title: "Lesson 2: HTML Document Structure", content: "The basic HTML document has a doctype, html, head, and body sections.", starterCode: `<!DOCTYPE html>\n<html>\n<head>\n  <title>Structure</title>\n</head>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>`},
+  {title: "Lesson 3: Headings", content: "Headings define sections. Use <h1> to <h6> for different heading sizes.", starterCode: `<h1>Heading 1</h1>\n<h2>Heading 2</h2>\n<h3>Heading 3</h3>`},
+  {title: "Lesson 4: Paragraphs & Text", content: "Use <p> to add text paragraphs.", starterCode: `<p>This is a paragraph of text.</p>`},
+  {title: "Lesson 5: Line Breaks & Comments", content: "Use <br> for line breaks and <!-- --> for comments.", starterCode: `<!-- This is a comment -->\n<p>Line1<br>Line2</p>`},
+  {title: "Lesson 6: Lists (ul, ol)", content: "Create ordered (<ol>) and unordered (<ul>) lists.", starterCode: `<ul>\n  <li>Item A</li>\n  <li>Item B</li>\n</ul>`},
+  {title: "Lesson 7: Links (Anchors)", content: "Use <a> with href to link to other pages.", starterCode: `<a href="https://example.com">Visit Example</a>`},
+  {title: "Lesson 8: Images", content: "Add images using <img> with src and alt attributes.", starterCode: `<img src="https://via.placeholder.com/150" alt="Example Image">`},
+  {title: "Lesson 9: Div & Span", content: "Containers: <div> for blocks, <span> for inline.", starterCode: `<div>This is a block</div>\n<span>This is inline</span>`},
+  {title: "Lesson 10: Tables", content: "Create tabular data with <table>, <tr>, <th>, <td>.", starterCode: `<table>\n  <tr><th>Col1</th><th>Col2</th></tr>\n  <tr><td>A</td><td>B</td></tr>\n</table>`},
+  {title: "Lesson 11: Forms", content: "Basic forms use <form>, <input>, <button>.", starterCode: `<form>\n  <input type="text" placeholder="Your name">\n  <button>Submit</button>\n</form>`},
+  {title: "Lesson 12: Input Types", content: "Explore different input types: text, email, password.", starterCode: `<input type="email" placeholder="Enter email">`},
+  {title: "Lesson 13: Semantic Tags", content: "Use semantic tags: <header>, <nav>, <main>, <footer>.", starterCode: `<header>Header</header>\n<nav>Menu</nav>`},
+  {title: "Lesson 14: Meta Tags", content: "Add <meta> in the <head> for charset, viewport, description.", starterCode: `<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">`},
+  {title: "Lesson 15: Embedding Video", content: "Use <video> to embed playable video.", starterCode: `<video controls>\n  <source src="video.mp4" type="video/mp4">\n</video>`},
+  {title: "Lesson 16: Audio Elements", content: "Add audio with <audio> and controls.", starterCode: `<audio controls>\n  <source src="audio.mp3" type="audio/mp3">\n</audio>`},
+  {title: "Lesson 17: iFrame", content: "Embed other pages with <iframe>.", starterCode: `<iframe src="https://example.com" width="300" height="200"></iframe>`},
+  {title: "Lesson 18: HTML Entities", content: "Use entities like &amp;, &lt;, &gt; to show special characters.", starterCode: `<p>Use &amp; for an ampersand.</p>`},
+  {title: "Lesson 19: Linking CSS", content: "Add external styles with <link rel=\"stylesheet\">.", starterCode: `<link rel="stylesheet" href="styles.css">`},
+  {title: "Lesson 20: Create Your First Page", content: "Apply what you learned to build a simple webpage.", starterCode: `<!DOCTYPE html>\n<html>\n<body>\n  <h1>My Web Page</h1>\n  <p>Written in HTML!</p>\n</body>\n</html>`}
+];
+
+let currentLesson = 0;
+
+function loadLesson() {
+  const lesson = htmlLessons[currentLesson];
+  document.getElementById('lesson-title').textContent = lesson.title;
+  document.getElementById('lesson-content').textContent = lesson.content;
+  document.getElementById('editor').value = lesson.starterCode;
+  document.getElementById('output').textContent = 'Run the code to see output...';
+}
+
+function nextLesson() { if(currentLesson < htmlLessons.length - 1){ currentLesson++; loadLesson(); }}
+function prevLesson() { if(currentLesson > 0){ currentLesson--; loadLesson(); }}
+
+function runCode() {
+  const code = document.getElementById('editor').value;
+  const output = document.getElementById('output');
+  output.className = '';
+  try {
+    const iframe = document.createElement('iframe');
+    document.body.appendChild(iframe);
+    iframe.style.display = 'none';
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(code);
+    iframeDoc.close();
+    document.body.removeChild(iframe);
+    output.textContent = '✅ Code ran successfully! Check browser preview for rendered HTML.';
+    output.classList.add('success');
+  } catch (err) {
+    output.textContent = err.message;
+    output.classList.add('error');
+  }
+}
+
+function askAI() {
+  const input = document.getElementById('aiInput').value.toLowerCase();
+  const output = document.getElementById('aiOutput');
+  if (!input) { output.textContent = 'Ask a question first.'; return; }
+  if (input.includes('error')) {
+    output.textContent = 'Check your HTML syntax: missing tags, quotes, or unclosed elements?';
+  } else if (input.includes('console')) {
+    output.textContent = 'Remember: HTML renders in browser, not console.log!';
+  } else {
+    output.textContent = 'Try reviewing your code carefully for typos or missing elements.';
+  }
+}
+
+loadLesson();
+</script>
+
+</body>
 </html>
+
 
