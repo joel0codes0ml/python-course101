@@ -289,36 +289,44 @@ export default function App() {
   const [output, setOutput] = useState("");
   const [isError, setIsError] = useState(false);
 
+  // 1. Updated useEffect to clear errors and update the browser tab title
   useEffect(() => {
     setUserCode(current.starterCode);
     setOutput("");
+    setIsError(false); // Clears red error when switching lessons
+    document.title = `ZeninLabs | ${current.title}`; // Updates browser tab
   }, [current]);
 
+  // 2. Added Reset Function
+  const resetLesson = () => {
+    if (window.confirm("Reset to starter code? Current progress will be lost.")) {
+      setUserCode(current.starterCode);
+      setOutput("");
+      setIsError(false);
+    }
+  };
+
   const runCode = () => {
-    setIsError(false); // Reset error state
+    setIsError(false); 
     
-    // Check 1: Missing Quotes (e.g., print(hello) instead of print("hello"))
     if (userCode.includes("print(") && !userCode.includes('"') && !userCode.includes("'")) {
        setIsError(true);
        setOutput(`  File "script.py", line 1\n    print(hello)\n               ^\nNameError: name 'hello' is not defined. Did you forget quotation marks?`);
        return;
     }
 
-    // Check 2: Missing Colon (e.g., if a > b instead of if a > b:)
     if ((userCode.includes("if ") || userCode.includes("while ") || userCode.includes("def ")) && !userCode.includes(":")) {
       setIsError(true);
       setOutput(`  File "script.py", line 2\n    ${userCode.split('\n')[0]}\n    ^\nSyntaxError: expected ':'`);
       return;
     }
 
-    // Check 3: Missing Parentheses for print
     if (userCode.includes("print ") && !userCode.includes("(")) {
       setIsError(true);
       setOutput(`  File "script.py", line 1\n    print "Hello"\n    ^\nSyntaxError: Missing parentheses in call to 'print'.`);
       return;
     }
 
-    // If no errors found
     setOutput(`>>> RUNNING:\n${userCode}\n\n[Output]: Execution Success!`);
   };
 
@@ -326,9 +334,17 @@ export default function App() {
     <div style={{ display: "flex", height: "100vh", backgroundColor: "#0f172a", color: "#f1f5f9", fontFamily: "sans-serif" }}>
       {/* Sidebar with all 40 Lessons */}
       <div style={{ width: "320px", background: "#1e293b", overflowY: "auto", borderRight: "1px solid #334155" }}>
-        <div style={{ padding: "20px", background: "#334155" }}>
-          <h2 style={{ margin: 0, fontSize: "1.2rem" }}>Python Course</h2>
+        
+        {/* --- ZeninLabs Branded Header --- */}
+        <div style={{ padding: '35px 20px', background: '#1e293b', borderBottom: '2px solid #38bdf8' }}>
+          <h1 style={{ margin: 0, fontSize: '1.7rem', color: '#ffffff', letterSpacing: '3px', fontWeight: '800', fontFamily: 'monospace' }}>
+            ZENIN<span style={{ color: '#38bdf8' }}>LABS</span>
+          </h1>
+          <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: '10px', textTransform: 'uppercase', letterSpacing: '2px' }}>
+            Future-Proof Engineering
+          </div>
         </div>
+
         {lessons.map((l) => (
           <div 
             key={l.id} 
@@ -352,39 +368,50 @@ export default function App() {
           </div>
 
           <div style={{ marginTop: "30px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
-              <h3>Editor</h3>
-              <button onClick={runCode} style={{ background: "#22c55e", color: "white", padding: "8px 20px", border: "none", borderRadius: "5px", cursor: "pointer" }}>Run ▶</button>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+              <h3 style={{ margin: 0, color: "#94a3b8", fontSize: "0.8rem", letterSpacing: "1px" }}>EDITOR</h3>
+              <div style={{ display: "flex", gap: "10px" }}>
+                {/* New Reset Button */}
+                <button onClick={resetLesson} style={{ background: "transparent", color: "#94a3b8", padding: "6px 15px", border: "1px solid #475569", borderRadius: "5px", cursor: "pointer", fontSize: "0.8rem" }}>
+                  Reset
+                </button>
+                {/* Run Button */}
+                <button onClick={runCode} style={{ background: "#38bdf8", color: "#0f172a", padding: "6px 20px", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", fontSize: "0.8rem" }}>
+                  Run ▶
+                </button>
+              </div>
             </div>
             
-            {/* The Textarea that finally allows typing */}
             <textarea 
               value={userCode}
               onChange={(e) => setUserCode(e.target.value)}
               spellCheck="false"
               style={{
                 width: "100%", height: "300px", backgroundColor: "#000", color: "#4ade80",
-                padding: "20px", fontFamily: "monospace", borderRadius: "10px", border: "1px solid #334155", outline: "none"
+                padding: "20px", fontFamily: "monospace", borderRadius: "10px", border: "1px solid #334155", outline: "none", fontSize: "1rem"
               }}
             />
           </div>
 
           {output && (
-  <div style={{ 
-    marginTop: "20px", 
-    padding: "20px", 
-    background: "#000", 
-    // This line makes it RED if isError is true, otherwise GREEN
-    color: isError ? "#ef4444" : "#22c55e", 
-    borderLeft: isError ? "4px solid #ef4444" : "4px solid #22c55e", 
-    fontFamily: "monospace", 
-    whiteSpace: "pre-wrap"
-  }}>
-    {output}
-  </div>
-)}
+            <div style={{ 
+              marginTop: "20px", 
+              padding: "20px", 
+              background: "#000", 
+              color: isError ? "#ef4444" : "#22c55e", 
+              borderLeft: isError ? "4px solid #ef4444" : "4px solid #22c55e", 
+              fontFamily: "monospace", 
+              whiteSpace: "pre-wrap" 
+            }}>
+              {output}
+            </div>
+          )}
+          
+          {/* Professional Footer */}
+          <footer style={{ marginTop: '60px', padding: '20px 0', borderTop: '1px solid #334155', color: '#64748b', fontSize: '0.75rem', textAlign: 'center' }}>
+            © 2025 ZeninLabs | Multi-Language Syntax Environment
+          </footer>
         </div>
       </div>
     </div>
   );
-}
