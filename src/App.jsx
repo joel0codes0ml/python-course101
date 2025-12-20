@@ -1,34 +1,49 @@
 import React, { useState, useEffect } from "react";
-import { lessons as pythonLessons } from "./lessons";
-import { htmlLessons } from "./courses/html";
-import Login from "./Login";
+
+// Import all courses
+import { htmlLessons } from "./courses/htmlLessons";
+import { rLessons } from "./courses/Rlessons";
+import { cLessons } from "./courses/clessons";
+import { cppLessons } from "./courses/cpplessons";
+import { goLessons } from "./courses/golessons";
+import { sqlLessons } from "./courses/sqllessons";
+
+import Login from "./Login.jsx";
+
+// Map all courses
+const allCourses = {
+  HTML: htmlLessons,
+  R: rLessons,
+  C: cLessons,
+  "C++": cppLessons,
+  Go: goLessons,
+  SQL: sqlLessons,
+};
 
 export default function App() {
   const [user, setUser] = useState(localStorage.getItem("zenin_user") || "");
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("zenin_user"));
+  const [isLoggedIn, setIsLoggedIn] = useState(!!user);
 
-  // course: python | html
-  const [course, setCourse] = useState("python");
-
-  const lessons = course === "python" ? pythonLessons : htmlLessons;
-
-  const [current, setCurrent] = useState(lessons[0]);
+  const [course, setCourse] = useState("HTML");
+  const [lessons, setLessons] = useState(allCourses[course]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [userCode, setUserCode] = useState(lessons[0].starterCode);
   const [output, setOutput] = useState("");
 
-  // Reset lesson when course changes
+  // Reset lessons when course changes
   useEffect(() => {
-    setCurrent(lessons[0]);
-    setUserCode(lessons[0].starterCode);
+    setLessons(allCourses[course]);
+    setCurrentIndex(0);
+    setUserCode(allCourses[course][0].starterCode);
     setOutput("");
   }, [course]);
 
   // Save progress
   useEffect(() => {
     if (isLoggedIn) {
-      localStorage.setItem("zenin_progress", JSON.stringify({ course, current }));
+      localStorage.setItem("zenin_progress", JSON.stringify({ course, currentIndex }));
     }
-  }, [current, course, isLoggedIn]);
+  }, [currentIndex, course, isLoggedIn]);
 
   const handleLogin = (name) => {
     localStorage.setItem("zenin_user", name);
@@ -39,74 +54,55 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem("zenin_user");
     localStorage.removeItem("zenin_progress");
-    setIsLoggedIn(false);
     setUser("");
+    setIsLoggedIn(false);
   };
 
-  if (!isLoggedIn) {
-    return <Login onLogin={handleLogin} />;
-  }
+  const currentLesson = lessons[currentIndex];
+
+  if (!isLoggedIn) return <Login onLogin={handleLogin} />;
 
   return (
-    <div style={{ display: "flex", height: "100vh", backgroundColor: "#0f172a", color: "#fff" }}>
+    <div style={{ display: "flex", height: "100vh", background: "#0f172a", color: "#fff" }}>
       
-      {/* SIDEBAR */}
+      {/* Sidebar */}
       <div style={{ width: "300px", background: "#1e293b", borderRight: "2px solid #ef4444", overflowY: "auto" }}>
-        
-        {/* LOGO */}
         <div style={{ padding: "20px", textAlign: "center", borderBottom: "1px solid #334155" }}>
           <h2 style={{ fontFamily: "monospace", letterSpacing: "2px" }}>
             ZENIN<span style={{ color: "#ef4444" }}>LABS</span>
           </h2>
-          <button
-            onClick={handleLogout}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#64748b",
-              cursor: "pointer",
-              fontSize: "10px"
-            }}
-          >
+          <button onClick={handleLogout} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "10px" }}>
             LOGOUT
           </button>
         </div>
 
-        {/* COURSE SWITCH */}
+        {/* Course Selector */}
         <div style={{ display: "flex", gap: "8px", padding: "10px" }}>
-          <button onClick={() => setCourse("python")} style={courseBtn(course === "python")}>
-            Python
-          </button>
-          <button onClick={() => setCourse("html")} style={courseBtn(course === "html")}>
-            HTML
-          </button>
+          {Object.keys(allCourses).map((lang) => (
+            <button key={lang} onClick={() => setCourse(lang)} style={courseBtn(course === lang)}>
+              {lang}
+            </button>
+          ))}
         </div>
 
-        {/* LESSON LIST */}
-        {lessons.map((l) => (
-          <div
-            key={l.id}
-            onClick={() => setCurrent(l)}
-            style={{
-              padding: "15px",
-              cursor: "pointer",
-              borderBottom: "1px solid #334155",
-              background: current.id === l.id ? "#ef444422" : "transparent",
-              color: current.id === l.id ? "#ef4444" : "#fff"
-            }}
-          >
+        {/* Lesson List */}
+        {lessons.map((l, idx) => (
+          <div key={idx} onClick={() => setCurrentIndex(idx)} style={{
+            padding: "15px",
+            cursor: "pointer",
+            borderBottom: "1px solid #334155",
+            background: currentIndex === idx ? "#ef444422" : "transparent",
+            color: currentIndex === idx ? "#ef4444" : "#fff"
+          }}>
             {l.title}
           </div>
         ))}
       </div>
 
-      {/* MAIN CONTENT */}
+      {/* Main Content */}
       <div style={{ flex: 1, padding: "40px", overflowY: "auto" }}>
-        <h1>{current.title}</h1>
-
-        <p style={{ background: "#1e293b", padding: "20px", borderRadius: "10px" }}>
-          {current.content}
-        </p>
+        <h1>{currentLesson.title}</h1>
+        <p style={{ background: "#1e293b", padding: "20px", borderRadius: "10px" }}>{currentLesson.content}</p>
 
         <textarea
           value={userCode}
@@ -123,42 +119,33 @@ export default function App() {
           }}
         />
 
-        <button
-          onClick={() => setOutput(">>> Code executed successfully")}
-          style={{
-            marginTop: "20px",
-            padding: "12px 30px",
-            background: "#ef4444",
-            color: "#fff",
-            border: "none",
-            borderRadius: "5px",
-            fontWeight: "bold",
-            cursor: "pointer"
-          }}
-        >
+        <button onClick={() => setOutput(">>> Code executed successfully")} style={{
+          marginTop: "20px",
+          padding: "12px 30px",
+          background: "#ef4444",
+          color: "#fff",
+          border: "none",
+          borderRadius: "5px",
+          fontWeight: "bold",
+          cursor: "pointer"
+        }}>
           RUN ▶
         </button>
 
-        {output && (
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "20px",
-              background: "#000",
-              color: "#4ade80",
-              fontFamily: "monospace",
-              borderRadius: "5px"
-            }}
-          >
-            {output}
-          </div>
-        )}
+        {output && <div style={{
+          marginTop: "20px",
+          padding: "20px",
+          background: "#000",
+          color: "#4ade80",
+          fontFamily: "monospace",
+          borderRadius: "5px"
+        }}>{output}</div>}
       </div>
     </div>
   );
 }
 
-// small helper
+// Helper function for course buttons
 function courseBtn(active) {
   return {
     flex: 1,
