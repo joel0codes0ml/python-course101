@@ -1,7 +1,6 @@
 // src/courses/index.js
-
 export { htmlLessons } from "./html";
-export { pythonLessons } from "./lessons"; // your main Python lessons file
+export { pythonLessons } from "./lessons";
 export { clLessons } from "./clessons";
 export { cppLessons } from "./cpplessons";
 export { cssLessons } from "./css";
