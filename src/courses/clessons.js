@@ -1,5 +1,6 @@
 export const cLessons = [
   {
+    id: 1,
     title: "Lesson 1: Introduction to C",
     content: "C is a general-purpose programming language developed in the 1970s. It's fast, efficient, and widely used for system programming, embedded systems, and more.",
     starterCode: `#include <stdio.h>
@@ -12,6 +13,7 @@ int main() {
 // Challenge: Change the message to 'Hello, World!' and run it.`
   },
   {
+    id: 2,
     title: "Lesson 2: Variables and Data Types",
     content: "Variables store data in C. Common types: int, float, char, double, etc.\n\nExample:\nint age = 25;\nchar grade = 'A';",
     starterCode: `#include <stdio.h>
@@ -26,6 +28,7 @@ int main() {
 // Challenge: Declare a float variable 'height' and print it.`
   },
   {
+    id: 3,
     title: "Lesson 3: Constants",
     content: "Constants are immutable values using 'const' keyword or #define.\n\nExample:\nconst float Pi = 3.14;\n#define MAX 100",
     starterCode: `#include <stdio.h>
@@ -40,6 +43,7 @@ int main() {
 // Challenge: Add a constant for your name and print it.`
   },
   {
+    id: 4,
     title: "Lesson 4: Operators",
     content: "C supports arithmetic (+,-,*,/,% ), relational (>,<,==), and logical (&&,||,!) operators.",
     starterCode: `#include <stdio.h>
@@ -54,6 +58,7 @@ int main() {
 // Challenge: Use modulus operator to print remainder of 10/3.`
   },
   {
+    id: 5,
     title: "Lesson 5: If-Else Statements",
     content: "Conditional statements allow branching logic.\n\nExample:\nif(age >= 18) { printf(\"Adult\"); } else { printf(\"Minor\"); }",
     starterCode: `#include <stdio.h>
@@ -71,6 +76,7 @@ int main() {
 // Challenge: Add an 'else if' for age == 18.`
   },
   {
+    id: 6,
     title: "Lesson 6: Switch Statement",
     content: "Switch allows multi-branch selection based on a variable.\n\nExample:\nswitch(day) { case 1: ... }",
     starterCode: `#include <stdio.h>
@@ -93,6 +99,7 @@ int main() {
 // Challenge: Add case 3 for Wednesday.`
   },
   {
+    id: 7,
     title: "Lesson 7: Loops - For",
     content: "For loops iterate a fixed number of times.\n\nExample:\nfor(int i=0; i<5; i++) { printf(\"%d\", i); }",
     starterCode: `#include <stdio.h>
@@ -107,6 +114,7 @@ int main() {
 // Challenge: Print even numbers from 2 to 10.`
   },
   {
+    id: 8,
     title: "Lesson 8: Loops - While",
     content: "While loops run while a condition is true.",
     starterCode: `#include <stdio.h>
@@ -123,6 +131,7 @@ int main() {
 // Challenge: Print numbers from 5 to 1 using while.`
   },
   {
+    id: 9,
     title: "Lesson 9: Loops - Do While",
     content: "Do-while loops run at least once before checking the condition.",
     starterCode: `#include <stdio.h>
@@ -139,6 +148,7 @@ int main() {
 // Challenge: Print 1 to 3 using do-while.`
   },
   {
+    id: 10,
     title: "Lesson 10: Arrays",
     content: "Arrays store multiple elements of the same type.\n\nExample:\nint nums[5] = {1,2,3,4,5};",
     starterCode: `#include <stdio.h>
@@ -154,6 +164,7 @@ int main() {
 // Challenge: Print the third element.`
   },
   {
+    id: 11,
     title: "Lesson 11: Strings",
     content: "Strings are arrays of characters. Use %s in printf to print them.\n\nExample:\nchar name[] = \"Alice\";",
     starterCode: `#include <stdio.h>
@@ -167,6 +178,7 @@ int main() {
 // Challenge: Declare another string 'city' and print it.`
   },
   {
+    id: 12,
     title: "Lesson 12: Functions",
     content: "Functions allow reusable code blocks.\n\nExample:\nint add(int a,int b){ return a+b; }",
     starterCode: `#include <stdio.h>
@@ -184,6 +196,7 @@ int main() {
 // Challenge: Write a function 'multiply'.`
   },
   {
+    id: 13,
     title: "Lesson 13: Pointers",
     content: "Pointers store memory addresses. Use * to dereference and & to get address.",
     starterCode: `#include <stdio.h>
@@ -198,6 +211,7 @@ int main() {
 // Challenge: Change the value of 'a' using the pointer.`
   },
   {
+    id: 14,
     title: "Lesson 14: Structs",
     content: "Structs group related data together.\n\nExample:\ntypedef struct { char name[50]; int age; } Person;",
     starterCode: `#include <stdio.h>
@@ -216,6 +230,7 @@ int main() {
 // Challenge: Create another Person and print it.`
   },
   {
+    id: 15,
     title: "Lesson 15: Typedef",
     content: "typedef creates an alias for a type.\n\nExample:\ntypedef unsigned int uint;",
     starterCode: `#include <stdio.h>
@@ -231,6 +246,7 @@ int main() {
 // Challenge: Use typedef for a struct.`
   },
   {
+    id: 16,
     title: "Lesson 16: File I/O",
     content: "Read and write files using FILE* and functions like fopen, fprintf, fscanf, fclose.",
     starterCode: `#include <stdio.h>
@@ -246,6 +262,7 @@ int main() {
 // Challenge: Open the file for reading and print its contents.`
   },
   {
+    id: 17,
     title: "Lesson 17: Dynamic Memory",
     content: "Use malloc, calloc, realloc, free to manage memory dynamically.",
     starterCode: `#include <stdio.h>
@@ -262,6 +279,7 @@ int main() {
 // Challenge: Resize the array using realloc.`
   },
   {
+    id: 18,
     title: "Lesson 18: Command Line Arguments",
     content: "main can accept arguments from command line: int main(int argc, char *argv[]).",
     starterCode: `#include <stdio.h>
@@ -275,6 +293,7 @@ int main(int argc, char *argv[]) {
 // Challenge: Print all command line arguments.`
   },
   {
+    id: 19,
     title: "Lesson 19: Preprocessor Directives",
     content: "#include, #define, #ifdef, #ifndef are preprocessor directives that run before compilation.",
     starterCode: `#include <stdio.h>
@@ -288,6 +307,7 @@ int main() {
 // Challenge: Use #ifdef to conditionally print a message.`
   },
   {
+    id: 20,
     title: "Lesson 20: Mini Project",
     content: "Combine everything learned to write a small C program that uses functions, arrays, structs, and loops.\n\nExample: A simple student management program.",
     starterCode: `#include <stdio.h>
