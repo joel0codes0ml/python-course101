@@ -1,8 +1,5 @@
 export const cppLessons = [
-  {
-    title: "Lesson 1: Introduction to C++",
-    content: "C++ is a powerful object-oriented programming language. It builds on C, adding classes, objects, and the Standard Template Library (STL).",
-    starterCode: `#include <iostream>
+  { id: 1, title: "Lesson 1: Introduction to C++", content: "C++ is a powerful object-oriented programming language. It builds on C, adding classes, objects, and the Standard Template Library (STL).", starterCode: `#include <iostream>
 using namespace std;
 
 int main() {
@@ -10,12 +7,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Change the message to 'Hello, World!'.`
-  },
-  {
-    title: "Lesson 2: Variables and Data Types",
-    content: "C++ supports int, float, double, char, bool, and string types.\n\nExample:\nint age = 25;\ndouble pi = 3.14;",
-    starterCode: `#include <iostream>
+// Challenge: Change the message to 'Hello, World!'.` },
+  { id: 2, title: "Lesson 2: Variables and Data Types", content: "C++ supports int, float, double, char, bool, and string types.\n\nExample:\nint age = 25;\ndouble pi = 3.14;", starterCode: `#include <iostream>
 using namespace std;
 
 int main() {
@@ -25,12 +18,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Declare a string variable 'name' and print it.`
-  },
-  {
-    title: "Lesson 3: Constants",
-    content: "Use 'const' or '#define' to create constants.",
-    starterCode: `#include <iostream>
+// Challenge: Declare a string variable 'name' and print it.` },
+  { id: 3, title: "Lesson 3: Constants", content: "Use 'const' or '#define' to create constants.", starterCode: `#include <iostream>
 #define MAX 100
 using namespace std;
 
@@ -40,12 +29,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Add a const string for your name and print it.`
-  },
-  {
-    title: "Lesson 4: Operators",
-    content: "C++ has arithmetic (+,-,*,/,%), relational (==,>,<), and logical (&&,||,!) operators.",
-    starterCode: `#include <iostream>
+// Challenge: Add a const string for your name and print it.` },
+  { id: 4, title: "Lesson 4: Operators", content: "C++ has arithmetic (+,-,*,/,%), relational (==,>,<), and logical (&&,||,!) operators.", starterCode: `#include <iostream>
 using namespace std;
 
 int main() {
@@ -55,12 +40,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Print remainder of a/b using %.`
-  },
-  {
-    title: "Lesson 5: If-Else Statements",
-    content: "Conditional statements control program flow.",
-    starterCode: `#include <iostream>
+// Challenge: Print remainder of a/b using %.` },
+  { id: 5, title: "Lesson 5: If-Else Statements", content: "Conditional statements control program flow.", starterCode: `#include <iostream>
 using namespace std;
 
 int main() {
@@ -75,12 +56,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Add another condition for age < 10.`
-  },
-  {
-    title: "Lesson 6: Switch Statement",
-    content: "Switch allows multiple branches based on a variable.",
-    starterCode: `#include <iostream>
+// Challenge: Add another condition for age < 10.` },
+  { id: 6, title: "Lesson 6: Switch Statement", content: "Switch allows multiple branches based on a variable.", starterCode: `#include <iostream>
 using namespace std;
 
 int main() {
@@ -93,12 +70,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Add case 3 for Wednesday.`
-  },
-  {
-    title: "Lesson 7: Loops - For",
-    content: "For loops iterate a fixed number of times.",
-    starterCode: `#include <iostream>
+// Challenge: Add case 3 for Wednesday.` },
+  { id: 7, title: "Lesson 7: Loops - For", content: "For loops iterate a fixed number of times.", starterCode: `#include <iostream>
 using namespace std;
 
 int main() {
@@ -108,12 +81,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Print even numbers from 2 to 10.`
-  },
-  {
-    title: "Lesson 8: Loops - While",
-    content: "While loops run while a condition is true.",
-    starterCode: `#include <iostream>
+// Challenge: Print even numbers from 2 to 10.` },
+  { id: 8, title: "Lesson 8: Loops - While", content: "While loops run while a condition is true.", starterCode: `#include <iostream>
 using namespace std;
 
 int main() {
@@ -125,12 +94,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Print numbers from 5 to 1 using while.`
-  },
-  {
-    title: "Lesson 9: Loops - Do While",
-    content: "Do-while loops run at least once before checking the condition.",
-    starterCode: `#include <iostream>
+// Challenge: Print numbers from 5 to 1 using while.` },
+  { id: 9, title: "Lesson 9: Loops - Do While", content: "Do-while loops run at least once before checking the condition.", starterCode: `#include <iostream>
 using namespace std;
 
 int main() {
@@ -142,12 +107,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Print 1 to 3 using do-while.`
-  },
-  {
-    title: "Lesson 10: Arrays",
-    content: "Arrays store multiple elements of the same type.",
-    starterCode: `#include <iostream>
+// Challenge: Print 1 to 3 using do-while.` },
+  { id: 10, title: "Lesson 10: Arrays", content: "Arrays store multiple elements of the same type.", starterCode: `#include <iostream>
 using namespace std;
 
 int main() {
@@ -156,12 +117,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Print the third element.`
-  },
-  {
-    title: "Lesson 11: Strings",
-    content: "C++ has both C-style strings (char arrays) and std::string.",
-    starterCode: `#include <iostream>
+// Challenge: Print the third element.` },
+  { id: 11, title: "Lesson 11: Strings", content: "C++ has both C-style strings (char arrays) and std::string.", starterCode: `#include <iostream>
 #include <string>
 using namespace std;
 
@@ -171,12 +128,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Declare another string 'city' and print it.`
-  },
-  {
-    title: "Lesson 12: Functions",
-    content: "Functions allow reusable code blocks.",
-    starterCode: `#include <iostream>
+// Challenge: Declare another string 'city' and print it.` },
+  { id: 12, title: "Lesson 12: Functions", content: "Functions allow reusable code blocks.", starterCode: `#include <iostream>
 using namespace std;
 
 int add(int a, int b) {
@@ -188,12 +141,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Write a function 'multiply'.`
-  },
-  {
-    title: "Lesson 13: Pointers",
-    content: "Pointers store memory addresses. Use * to dereference and & to get address.",
-    starterCode: `#include <iostream>
+// Challenge: Write a function 'multiply'.` },
+  { id: 13, title: "Lesson 13: Pointers", content: "Pointers store memory addresses. Use * to dereference and & to get address.", starterCode: `#include <iostream>
 using namespace std;
 
 int main() {
@@ -203,12 +152,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Change value of 'a' using pointer.`
-  },
-  {
-    title: "Lesson 14: References",
-    content: "References are aliases for variables, declared with &.",
-    starterCode: `#include <iostream>
+// Challenge: Change value of 'a' using pointer.` },
+  { id: 14, title: "Lesson 14: References", content: "References are aliases for variables, declared with &.", starterCode: `#include <iostream>
 using namespace std;
 
 int main() {
@@ -219,12 +164,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Create a reference for another variable.`
-  },
-  {
-    title: "Lesson 15: Classes & Objects",
-    content: "Classes define objects with attributes and methods.",
-    starterCode: `#include <iostream>
+// Challenge: Create a reference for another variable.` },
+  { id: 15, title: "Lesson 15: Classes & Objects", content: "Classes define objects with attributes and methods.", starterCode: `#include <iostream>
 using namespace std;
 
 class Person {
@@ -244,12 +185,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Create another Person object.`
-  },
-  {
-    title: "Lesson 16: Constructors",
-    content: "Constructors initialize objects automatically when created.",
-    starterCode: `#include <iostream>
+// Challenge: Create another Person object.` },
+  { id: 16, title: "Lesson 16: Constructors", content: "Constructors initialize objects automatically when created.", starterCode: `#include <iostream>
 using namespace std;
 
 class Person {
@@ -269,12 +206,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Create another Person with a different name.`
-  },
-  {
-    title: "Lesson 17: Vectors",
-    content: "Vectors are dynamic arrays from the STL (Standard Template Library).",
-    starterCode: `#include <iostream>
+// Challenge: Create another Person with a different name.` },
+  { id: 17, title: "Lesson 17: Vectors", content: "Vectors are dynamic arrays from the STL (Standard Template Library).", starterCode: `#include <iostream>
 #include <vector>
 using namespace std;
 
@@ -284,12 +217,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Add two more numbers to the vector and print.`
-  },
-  {
-    title: "Lesson 18: Inheritance",
-    content: "Inheritance allows one class to extend another.",
-    starterCode: `#include <iostream>
+// Challenge: Add two more numbers to the vector and print.` },
+  { id: 18, title: "Lesson 18: Inheritance", content: "Inheritance allows one class to extend another.", starterCode: `#include <iostream>
 using namespace std;
 
 class Animal {
@@ -309,12 +238,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Create a Cat class that inherits Animal.`
-  },
-  {
-    title: "Lesson 19: File I/O",
-    content: "Read and write files using fstream.",
-    starterCode: `#include <iostream>
+// Challenge: Create a Cat class that inherits Animal.` },
+  { id: 19, title: "Lesson 19: File I/O", content: "Read and write files using fstream.", starterCode: `#include <iostream>
 #include <fstream>
 using namespace std;
 
@@ -330,12 +255,8 @@ int main() {
     return 0;
 }
 
-// Challenge: Write multiple lines and read them back.`
-  },
-  {
-    title: "Lesson 20: Mini Project",
-    content: "Combine what you've learned to make a small program using classes, vectors, and file I/O.\n\nExample: Student Management System.",
-    starterCode: `#include <iostream>
+// Challenge: Write multiple lines and read them back.` },
+  { id: 20, title: "Lesson 20: Mini Project", content: "Combine what you've learned to make a small program using classes, vectors, and file I/O.\n\nExample: Student Management System.", starterCode: `#include <iostream>
 #include <vector>
 #include <string>
 using namespace std;
@@ -358,6 +279,5 @@ int main() {
     return 0;
 }
 
-// Challenge: Add a function to calculate average grade of students.`
-  }
+// Challenge: Add a function to calculate average grade of students.` }
 ];
