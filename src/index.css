@@ -1,15 +1,6 @@
-body, html {
+body {
   margin: 0;
-  padding: 0;
   font-family: Arial, sans-serif;
-  background: #0f172a;
+  background-color: #0f172a;
   color: #e5e7eb;
-}
-
-textarea {
-  font-family: monospace;
-}
-
-button {
-  font-family: monospace;
 }
