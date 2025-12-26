@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Login from "./Login";
+// FIXED: Explicitly pointing to the directory index
 import {
   htmlLessons,
   pythonLessons,
@@ -9,40 +10,41 @@ import {
   goLessons,
   sqlLessons,
   rLessons,
-} from "./courses";
+} from "./courses/index.js";
 
 export default function App() {
   const [user, setUser] = useState(localStorage.getItem("zenin_user") || "");
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("zenin_user"));
 
   const allCourses = {
-    python: pythonLessons,
-    html: htmlLessons,
-    c: clLessons,
-    cpp: cppLessons,
-    css: cssLessons,
-    go: goLessons,
-    sql: sqlLessons,
-    r: rLessons,
+    python: pythonLessons || [],
+    html: htmlLessons || [],
+    c: clLessons || [],
+    cpp: cppLessons || [],
+    css: cssLessons || [],
+    go: goLessons || [],
+    sql: sqlLessons || [],
+    r: rLessons || [],
   };
 
   const [course, setCourse] = useState("python");
-  const lessons = allCourses[course];
+  const lessons = allCourses[course] || [];
 
-  const [current, setCurrent] = useState(lessons[0]);
-  const [userCode, setUserCode] = useState(lessons[0].starterCode);
+  // SAFETY CHECK: Ensure lessons[0] exists before setting state
+  const [current, setCurrent] = useState(lessons[0] || { title: "Loading...", content: "", starterCode: "" });
+  const [userCode, setUserCode] = useState(lessons[0]?.starterCode || "");
   const [output, setOutput] = useState("");
 
-  // Reset lesson when course changes
   useEffect(() => {
-    setCurrent(lessons[0]);
-    setUserCode(lessons[0].starterCode);
-    setOutput("");
+    if (lessons.length > 0) {
+      setCurrent(lessons[0]);
+      setUserCode(lessons[0].starterCode);
+      setOutput("");
+    }
   }, [course]);
 
-  // Save progress
   useEffect(() => {
-    if (isLoggedIn) {
+    if (isLoggedIn && current.id) {
       localStorage.setItem("zenin_progress", JSON.stringify({ course, current }));
     }
   }, [current, course, isLoggedIn]);
@@ -62,24 +64,21 @@ export default function App() {
 
   if (!isLoggedIn) return <Login onLogin={handleLogin} />;
 
+  // FINAL SAFETY CHECK: If lessons are missing, show a message instead of a white screen
+  if (lessons.length === 0) return <div style={{color: 'white', padding: '20px'}}>Error: Lessons not found. Check src/courses/index.js</div>;
+
   return (
     <div style={{ display: "flex", height: "100vh", backgroundColor: "#0f172a", color: "#fff" }}>
-      {/* SIDEBAR */}
       <div style={{ width: "300px", background: "#1e293b", borderRight: "2px solid #ef4444", overflowY: "auto" }}>
-        {/* LOGO */}
         <div style={{ padding: "20px", textAlign: "center", borderBottom: "1px solid #334155" }}>
           <h2 style={{ fontFamily: "monospace", letterSpacing: "2px" }}>
             ZENIN<span style={{ color: "#ef4444" }}>LABS</span>
           </h2>
-          <button
-            onClick={handleLogout}
-            style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "10px" }}
-          >
+          <button onClick={handleLogout} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "10px" }}>
             LOGOUT
           </button>
         </div>
 
-        {/* COURSE SWITCH */}
         <div style={{ display: "flex", gap: "8px", padding: "10px" }}>
           {Object.keys(allCourses).map((c) => (
             <button key={c} onClick={() => setCourse(c)} style={courseBtn(course === c)}>
@@ -88,7 +87,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* LESSON LIST */}
         {lessons.map((l) => (
           <div
             key={l.id}
@@ -106,7 +104,6 @@ export default function App() {
         ))}
       </div>
 
-      {/* MAIN CONTENT */}
       <div style={{ flex: 1, padding: "40px", overflowY: "auto" }}>
         <h1>{current.title}</h1>
         <p style={{ background: "#1e293b", padding: "20px", borderRadius: "10px" }}>{current.content}</p>
@@ -143,16 +140,7 @@ export default function App() {
         </button>
 
         {output && (
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "20px",
-              background: "#000",
-              color: "#4ade80",
-              fontFamily: "monospace",
-              borderRadius: "5px",
-            }}
-          >
+          <div style={{ marginTop: "20px", padding: "20px", background: "#000", color: "#4ade80", fontFamily: "monospace", borderRadius: "5px" }}>
             {output}
           </div>
         )}
@@ -161,7 +149,6 @@ export default function App() {
   );
 }
 
-// Helper for course buttons
 function courseBtn(active) {
   return {
     flex: 1,
