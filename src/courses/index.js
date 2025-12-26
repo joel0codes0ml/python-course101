@@ -1,14 +1,16 @@
-// Import everything from the individual files
+// src/courses/index.js
+
 import { htmlLessons } from "./html.js";
 import { cssLessons } from "./css.js";
-import { pythonLessons } from "./pythonlessons.js"; // Ensure this filename matches exactly!
+// FIXED: This must match your filename "coursespython.js" exactly
+import { pythonLessons } from "./coursespython.js"; 
 import { clLessons } from "./clessons.js";
 import { cppLessons } from "./cpplessons.js";
 import { golessons as goLessons } from "./golessons.js";
 import { sqllessons as sqlLessons } from "./sqllessons.js";
+// FIXED: Note the Capital "R" to match your file "Rlessons.js"
 import { Rlessons as rLessons } from "./Rlessons.js";
 
-// Export them all so App.jsx can see them
 export {
   htmlLessons,
   pythonLessons,
@@ -17,5 +19,5 @@ export {
   cssLessons,
   goLessons,
   sqlLessons,
-  rLessons
+  rLessons,
 };
