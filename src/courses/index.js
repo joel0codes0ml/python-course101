@@ -2,13 +2,13 @@
 
 import { htmlLessons } from "./html.js";
 import { cssLessons } from "./css.js";
-// FIXED: This must match your filename "coursespython.js" exactly
-import { pythonLessons } from "./coursespython.js"; 
+// FIXED: Your file is named "python.js" on GitHub
+import { pythonLessons } from "./python.js"; 
 import { clLessons } from "./clessons.js";
 import { cppLessons } from "./cpplessons.js";
 import { golessons as goLessons } from "./golessons.js";
 import { sqllessons as sqlLessons } from "./sqllessons.js";
-// FIXED: Note the Capital "R" to match your file "Rlessons.js"
+// FIXED: Matching the Capital "R" in your "Rlessons.js" file
 import { Rlessons as rLessons } from "./Rlessons.js";
 
 export {
