@@ -5,7 +5,7 @@ import * as cssMod from "./css.js";
 import * as pythonMod from "./python.js";
 import * as cMod from "./clessons.js";
 import * as cppMod from "./cpplessons.js";
-import * as goMod from "./golessons.js";
+import * as goMod from "./index.js";
 import * as sqlMod from "./sqllessons.js";
 import * as rMod from "./Rlessons.js";
 
