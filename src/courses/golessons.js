@@ -1,4 +1,4 @@
-export const golessons = [
+export const goLessons = [
   { id: 1, title: "Lesson 1: Introduction to Go", content: "Go (Golang) is a statically typed, compiled language designed at Google. It's known for simplicity, performance, and concurrency support.\n\nIn this lesson, you'll learn the basic structure of a Go program.", starterCode: `package main
 
 import "fmt"
