@@ -1,23 +1,25 @@
 // src/courses/index.js
 
-import { htmlLessons } from "./html.js";
-import { cssLessons } from "./css.js";
-// FIXED: Your file is named "python.js" on GitHub
-import { pythonLessons } from "./python.js"; 
-import { clLessons } from "./clessons.js";
-import { cppLessons } from "./cpplessons.js";
-import { golessons as goLessons } from "./golessons.js";
-import { sqllessons as sqlLessons } from "./sqllessons.js";
-// FIXED: Matching the Capital "R" in your "Rlessons.js" file
-import { Rlessons as rLessons } from "./Rlessons.js";
+import * as htmlModule from "./html.js";
+import * as cssModule from "./css.js";
+import * as pythonModule from "./python.js";
+import * as cModule from "./clessons.js";
+import * as cppModule from "./cpplessons.js";
+import * as goModule from "./golessons.js";
+import * as sqlModule from "./sqllessons.js";
+import * as rModule from "./Rlessons.js";
 
-export {
-  htmlLessons,
-  pythonLessons,
-  clLessons,
-  cppLessons,
-  cssLessons,
-  goLessons,
-  sqlLessons,
-  rLessons,
+// This helper function finds the first array in each file so you don't have to worry about variable names
+const extractLessons = (module) => {
+  const key = Object.keys(module).find(k => Array.isArray(module[k]));
+  return module[key] || [];
 };
+
+export const htmlLessons = extractLessons(htmlModule);
+export const cssLessons = extractLessons(cssModule);
+export const pythonLessons = extractLessons(pythonModule);
+export const clLessons = extractLessons(cModule);
+export const cppLessons = extractLessons(cppModule);
+export const goLessons = extractLessons(goModule);
+export const sqlLessons = extractLessons(sqlModule);
+export const rLessons = extractLessons(rModule);
