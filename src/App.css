@@ -2,64 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: dark;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code&display=swap');
 
 body {
-  margin: 0;
-  background-color: #020617;
-  -webkit-font-smoothing: antialiased;
+  background-color: #0b0f1a;
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
 }
 
-/* Scrollbar Style */
+code, textarea, pre {
+  font-family: 'Fira Code', monospace;
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
+
 ::-webkit-scrollbar-track {
-  background: #020617;
+  background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #1e293b;
   border-radius: 10px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #ef4444;
+  background: #3b82f6;
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Fix for standardizing input/textarea focus */
+textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5);
 }
 
 .animate-in {
-  animation: fadeIn 0.5s ease-out forwards;
+  animation: fadeIn 0.4s ease-out;
 }
 
-@keyframes bounce-slow {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-
-.animate-bounce-slow {
-  animation: bounce-slow 3s ease-in-out infinite;
-}
-
-/* Editor Glowing Effect */
-textarea:focus {
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
-}
-
-/* Leaderboard Glass Effect */
-.bg-slate-900\/20 {
-  backdrop-filter: blur(10px);
-}
-
-/* Mobile responsive fixes */
-@media (max-width: 768px) {
-  .flex-col-responsive {
-    flex-direction: column;
-  }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
