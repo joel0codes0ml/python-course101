@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Login from "./Login";
 import {
   htmlLessons, pythonLessons, clLessons, cppLessons,
@@ -6,17 +6,16 @@ import {
 } from "./courses/index.js";
 
 export default function App() {
+  // --- STATE & AUTH ---
   const [user, setUser] = useState(localStorage.getItem("zenin_user") || "");
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("zenin_user"));
   const [course, setCourse] = useState("python");
   const [output, setOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  // MASCOT & PROGRESS STATE
-  const [mascotMsg, setMascotMsg] = useState("Welcome back, Ninja! Ready to code?");
-  const [progress, setProgress] = useState(JSON.parse(localStorage.getItem("zenin_stats")) || {
-    python: 0, html: 0, c: 0, cpp: 0, css: 0, go: 0, sql: 0, r: 0
-  });
+  // --- MASCOT & PROGRESS ---
+  const [mascotMsg, setMascotMsg] = useState("Welcome, Ninja. Ready to master the scrolls?");
+  const [progress, setProgress] = useState(JSON.parse(localStorage.getItem("zenin_stats")) || {});
 
   const allCourses = {
     python: pythonLessons || [],
@@ -30,32 +29,33 @@ export default function App() {
   };
 
   const lessons = allCourses[course] || [];
-  const [current, setCurrent] = useState(lessons[0] || { id: 1, title: "Loading...", content: "", starterCode: "" });
-  const [userCode, setUserCode] = useState(current?.starterCode || "");
+  const [current, setCurrent] = useState(lessons[0] || { id: 1, title: "Loading..." });
+  const [userCode, setUserCode] = useState("");
 
-  // SOUND EFFECT
-  const playSuccess = () => {
-    const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3"); // iPhone-style chime
-    audio.play();
+  // --- SOUND SYSTEM ---
+  const playSuccessSound = () => {
+    const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3");
+    audio.volume = 0.4;
+    audio.play().catch(e => console.log("Audio play blocked until user interaction"));
   };
 
+  // --- REFRESH LESSON ON COURSE CHANGE ---
   useEffect(() => {
     if (lessons.length > 0) {
       setCurrent(lessons[0]);
-      setUserCode(lessons[0].starterCode);
+      setUserCode(lessons[0].starterCode || "");
       setOutput("");
     }
   }, [course]);
 
-  // REAL CODE EXECUTION
+  // --- REAL CODE EXECUTION (PISTON API) ---
   const handleRunCode = async () => {
     setIsLoading(true);
-    setMascotMsg("Analyzing your scrolls...");
+    setMascotMsg("Analyzing your code jutsu...");
     
     try {
       const response = await fetch("https://emkc.org/api/v2/piston/execute", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           language: course === 'c' ? 'c' : course === 'cpp' ? 'cpp' : course,
           version: "*",
@@ -68,18 +68,29 @@ export default function App() {
       setOutput(result);
 
       if (data.run.stderr) {
-        setMascotMsg("⚠️ A bug in your jutsu! Look at the error message.");
+        setMascotMsg("⚠️ A bug! Even the best Ninjas fail. Check the error log.");
       } else {
-        // Progress Logic (2.5% per lesson)
-        playSuccess();
-        setMascotMsg("✅ Excellent! 2.5% Progress Gained!");
-        const newProgress = { ...progress, [course]: Math.min(progress[course] + 2.5, 100) };
-        setProgress(newProgress);
-        localStorage.setItem("zenin_stats", JSON.stringify(newProgress));
+        // SUCCESS LOGIC
+        playSuccessSound();
+        setMascotMsg("✨ Perfect! 2.5% Progress Syncing...");
+        
+        // Update Progress: track IDs to prevent double-counting
+        const completedKey = `done_${course}`;
+        let doneList = JSON.parse(localStorage.getItem(completedKey)) || [];
+        
+        if (!doneList.includes(current.id)) {
+          doneList.push(current.id);
+          localStorage.setItem(completedKey, JSON.stringify(doneList));
+          
+          const newPercentage = (doneList.length / 40) * 100;
+          const newStats = { ...progress, [course]: newPercentage };
+          setProgress(newStats);
+          localStorage.setItem("zenin_stats", JSON.stringify(newStats));
+        }
       }
     } catch (err) {
-      setOutput("Connection Error: Execution failed.");
-      setMascotMsg("The server is currently sealed. Try again later.");
+      setOutput("Connection Error: Execution server unreachable.");
+      setMascotMsg("My connection to the server is sealed. Try again later!");
     }
     setIsLoading(false);
   };
@@ -90,73 +101,75 @@ export default function App() {
     setIsLoggedIn(true);
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    setIsLoggedIn(false);
-    setUser("");
-  };
-
   if (!isLoggedIn) return <Login onLogin={handleLogin} />;
 
   return (
-    <div style={{ display: "flex", height: "100vh", backgroundColor: "#0f172a", color: "#fff", fontFamily: 'monospace' }}>
+    <div className="flex h-screen bg-[#0f172a] text-white font-mono overflow-hidden">
       {/* SIDEBAR */}
-      <div style={{ width: "300px", background: "#1e293b", borderRight: "2px solid #ef4444", display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: "20px", textAlign: "center", borderBottom: "1px solid #334155" }}>
-          <h2 style={{ letterSpacing: "2px" }}>ZENIN<span style={{ color: "#ef4444" }}>LABS</span></h2>
-          <div style={{fontSize: '12px', color: '#4ade80'}}>Ninja: {user} | {progress[course]}%</div>
-          <button onClick={handleLogout} style={{ color: "#64748b", cursor: "pointer", fontSize: "10px", background: 'none', border: 'none' }}>LOGOUT</button>
+      <div className="w-80 bg-[#1e293b] border-r-2 border-red-500 flex flex-col">
+        <div className="p-6 text-center border-b border-slate-700">
+          <h2 className="text-xl tracking-[4px] font-bold">ZENIN<span className="text-red-500">LABS</span></h2>
+          <div className="text-[10px] text-green-400 mt-1 uppercase">Ninja: {user}</div>
+          <div className="w-full bg-slate-900 h-1 mt-3 rounded-full overflow-hidden">
+            <div className="bg-red-500 h-full transition-all duration-500" style={{ width: `${progress[course] || 0}%` }}></div>
+          </div>
+          <div className="text-[9px] mt-1 text-slate-400">{progress[course] || 0}% COMPLETE</div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: '1fr 1fr', gap: "4px", padding: "10px" }}>
+        <div className="grid grid-cols-2 gap-1 p-2">
           {Object.keys(allCourses).map((c) => (
-            <button key={c} onClick={() => setCourse(c)} style={courseBtn(course === c)}>{c.toUpperCase()}</button>
+            <button key={c} onClick={() => setCourse(c)} 
+              className={`p-2 text-[10px] rounded transition ${course === c ? 'bg-red-500' : 'bg-slate-800 hover:bg-slate-700'}`}>
+              {c.toUpperCase()}
+            </button>
           ))}
         </div>
 
-        <div style={{ overflowY: "auto", flex: 1 }}>
+        <div className="overflow-y-auto flex-1">
           {lessons.map((l) => (
-            <div key={l.id} onClick={() => { setCurrent(l); setUserCode(l.starterCode); }} style={lessonLink(current.id === l.id)}>
+            <div key={l.id} onClick={() => { setCurrent(l); setUserCode(l.starterCode); }}
+              className={`p-4 cursor-pointer border-b border-slate-800 text-xs transition ${current.id === l.id ? 'bg-red-500/10 text-red-500 border-l-4 border-l-red-500' : 'hover:bg-slate-800'}`}>
               {l.title}
             </div>
           ))}
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
-      <div style={{ flex: 1, padding: "30px", overflowY: "auto", position: 'relative' }}>
-        {/* MASCOT COMPONENT */}
-        <div style={mascotContainer}>
-            <div style={speechBubble}>{mascotMsg}</div>
-            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Zenin" style={mascotImg} alt="Mascot" />
+      {/* MAIN WORKSPACE */}
+      <div className="flex-1 p-8 overflow-y-auto relative">
+        {/* MASCOT */}
+        <div className="fixed bottom-10 right-10 flex items-center gap-4 z-50 animate-bounce-slow">
+          <div className="bg-white text-black text-[11px] p-3 rounded-2xl rounded-br-none shadow-2xl max-w-[180px] font-sans font-bold">
+            {mascotMsg}
+          </div>
+          <img src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${user}`} className="w-16 h-16 bg-slate-800 rounded-full border-2 border-red-500 shadow-red-500/20 shadow-lg" alt="AI Mascot" />
         </div>
 
-        <h1>{current.title}</h1>
-        <p style={{ background: "#1e293b", padding: "15px", borderRadius: "10px", borderLeft: '4px solid #ef4444' }}>{current.content}</p>
+        <div className="max-w-4xl">
+          <h1 className="text-3xl font-bold mb-4">{current.title}</h1>
+          <div className="bg-slate-800/50 p-6 rounded-xl border-l-4 border-red-500 mb-6 text-sm leading-relaxed text-slate-300">
+            {current.content}
+          </div>
 
-        <textarea value={userCode} onChange={(e) => setUserCode(e.target.value)} style={editorStyle} />
+          <div className="relative group">
+             <div className="absolute top-2 right-4 text-[10px] text-slate-500 uppercase">Editor</div>
+             <textarea value={userCode} onChange={(e) => setUserCode(e.target.value)} 
+                className="w-full h-72 bg-black text-green-400 p-6 rounded-xl border border-slate-700 focus:border-red-500 outline-none text-sm font-mono shadow-2xl" />
+          </div>
 
-        <button onClick={handleRunCode} disabled={isLoading} style={runBtn}>
-          {isLoading ? "EXECUTING..." : "INITIALIZE JUTSU ▶"}
-        </button>
+          <button onClick={handleRunCode} disabled={isLoading}
+            className="mt-6 px-10 py-4 bg-red-500 hover:bg-red-600 disabled:bg-slate-600 text-white font-bold rounded-lg transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-red-500/20">
+            {isLoading ? "COMPILING..." : "EXECUTE CODE ▶"}
+          </button>
 
-        <div style={consoleStyle}>
-          <div style={{color: '#64748b', borderBottom: '1px solid #334155', marginBottom: '10px', fontSize: '12px'}}>TERMINAL OUTPUT:</div>
-          {output || "Awaiting input..."}
+          {output && (
+            <div className="mt-8 p-6 bg-black rounded-xl border border-slate-800 shadow-inner">
+              <div className="text-[10px] text-slate-500 mb-2 uppercase tracking-widest">Terminal Output</div>
+              <pre className="text-green-400 text-sm whitespace-pre-wrap">{output}</pre>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
-// STYLES
-const courseBtn = (active) => ({ padding: "6px", background: active ? "#ef4444" : "#0f172a", color: "#fff", border: "1px solid #334155", borderRadius: "4px", cursor: "pointer", fontSize: '10px' });
-const lessonLink = (active) => ({ padding: "12px", cursor: "pointer", borderBottom: "1px solid #334155", background: active ? "#ef444422" : "transparent", color: active ? "#ef4444" : "#fff", fontSize: '13px' });
-const editorStyle = { width: "100%", height: "250px", background: "#000", color: "#4ade80", padding: "20px", fontFamily: "monospace", borderRadius: "10px", border: "1px solid #334155", outline: 'none', marginTop: '10px' };
-const consoleStyle = { marginTop: "20px", padding: "20px", background: "#000", color: "#4ade80", fontFamily: "monospace", borderRadius: "10px", border: '1px solid #1e293b', minHeight: '80px', whiteSpace: 'pre-wrap' };
-const runBtn = { marginTop: "15px", padding: "12px 40px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "5px", fontWeight: "bold", cursor: "pointer", letterSpacing: '1px' };
-
-// MASCOT STYLES
-const mascotContainer = { position: 'fixed', bottom: '20px', right: '20px', display: 'flex', alignItems: 'center', gap: '10px', zIndex: 100 };
-const speechBubble = { background: '#fff', color: '#000', padding: '10px 15px', borderRadius: '15px', fontSize: '12px', maxWidth: '200px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', position: 'relative' };
-const mascotImg = { width: '60px', height: '60px', background: '#1e293b', borderRadius: '50%', border: '2px solid #ef4444' };
