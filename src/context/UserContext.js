@@ -1,48 +1,62 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState } from "react";
+import { auth, db } from "../firebase";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged
+} from "firebase/auth";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 const UserContext = createContext();
+export const useUser = () => useContext(UserContext);
 
 export const UserProvider = ({ children }) => {
-  // 1. Initialize State from LocalStorage
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('coddy_user')) || {
-    username: "",
-    points: 0,
-    referral: "",
-    joinedDate: new Date().toLocaleDateString()
-  });
+  const [user, setUser] = useState(null);
+  const [progress, setProgress] = useState({});
 
-  const [completedLessons, setCompletedLessons] = useState(
-    JSON.parse(localStorage.getItem('coddy_progress')) || { python: [], sql: [], html: [], go: [] }
-  );
-
-  // 2. Persistent Saving
   useEffect(() => {
-    localStorage.setItem('coddy_user', JSON.stringify(user));
-    localStorage.setItem('coddy_progress', JSON.stringify(completedLessons));
-  }, [user, completedLessons]);
+    return onAuthStateChanged(auth, async (u) => {
+      if (!u) return setUser(null);
 
-  // 3. iPhone Sound Logic
-  const playSuccessSound = () => {
-    const audio = new Audio('https://www.soundjay.com/phone/sounds/iphone-sms-tone.mp3');
-    audio.play().catch(e => console.log("Sound blocked by browser"));
-  };
+      const ref = doc(db, "users", u.uid);
+      const snap = await getDoc(ref);
 
-  const markComplete = (course, id) => {
-    if (!completedLessons[course].includes(id)) {
-      setCompletedLessons(prev => ({
-        ...prev,
-        [course]: [...prev[course], id]
-      }));
-      setUser(prev => ({ ...prev, points: prev.points + 10 }));
-      playSuccessSound();
-    }
+      if (!snap.exists()) {
+        await setDoc(ref, {
+          username: u.email.split("@")[0],
+          xp: 0,
+          streak: 1,
+          completed: {}
+        });
+      }
+
+      setUser({ uid: u.uid, ...snap.data() });
+      setProgress(snap.data().completed || {});
+    });
+  }, []);
+
+  const completeLesson = async (course, id) => {
+    if (progress?.[course]?.includes(id)) return;
+
+    const ref = doc(db, "users", user.uid);
+    const updated = {
+      ...progress,
+      [course]: [...(progress[course] || []), id]
+    };
+
+    await updateDoc(ref, {
+      completed: updated,
+      xp: user.xp + 10
+    });
+
+    setProgress(updated);
+    setUser(prev => ({ ...prev, xp: prev.xp + 10 }));
   };
 
   return (
-    <UserContext.Provider value={{ user, setUser, completedLessons, markComplete }}>
+    <UserContext.Provider value={{ user, progress, completeLesson }}>
       {children}
     </UserContext.Provider>
   );
 };
 
-export const useUser = () => useContext(UserContext);
