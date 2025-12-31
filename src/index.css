@@ -1,6 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
+
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background-color: #0f172a;
-  color: #e5e7eb;
+  /* Inter is the industry standard for clean tech interfaces */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* A deeper, richer navy for a premium "Pro" feel */
+  background-color: #020617; 
+  color: #f1f5f9;
+  
+  /* Smooths out font rendering on MacOS/Chrome */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Prevents horizontal bounce on mobile */
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar to match the Coddy.tech dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 10px;
+  border: 2px solid #020617;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Global Transition for View Switching */
+.animate-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(8px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
 }
