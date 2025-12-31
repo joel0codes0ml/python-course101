@@ -1,44 +1,68 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 
-export default function Login({ onLogin }) {
-  const [user, setUser] = useState("");
-  const [source, setSource] = useState("");
+const Login = ({ onLogin }) => {
+  const [name, setName] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (user.length > 2 && source) {
-      localStorage.setItem("zenin_discovery", source);
-      onLogin(user);
+    if (name.trim()) {
+      onLogin(name.trim());
     }
   };
 
   return (
-    <div className="h-screen flex justify-center items-center bg-[#0f172a]">
-      <div className="bg-[#1e293b] p-10 rounded-2xl border-2 border-red-500 text-center w-[360px] shadow-2xl">
-        <div className="w-24 h-24 mx-auto mb-6 rounded-full overflow-hidden border-4 border-black ring-2 ring-red-500">
-           <img src="https://i.pinimg.com/1200x/a7/21/d5/a721d5d3b9294833c32f9c5f8db71b43.jpg" alt="Sharingan" />
+    <div className="h-screen w-full bg-[#020617] flex items-center justify-center p-6 font-sans selection:bg-blue-500/30">
+      <div className="w-full max-w-sm animate-in">
+        {/* LOGO */}
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-black text-white tracking-tighter mb-2">
+            ZENIN<span className="text-blue-500">LABS</span>
+          </h1>
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">
+            Learn to Code for Free
+          </p>
         </div>
-        <h2 className="text-white font-mono tracking-[4px] text-xl mb-8">ZENIN<span className="text-red-500">LABS</span></h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" placeholder="Username" required 
-            className="w-full p-3 bg-[#0f172a] border border-slate-700 text-white rounded outline-none focus:border-red-500" 
-            onChange={(e) => setUser(e.target.value)} />
-          
-          <select required className="w-full p-3 bg-[#0f172a] border border-slate-700 text-slate-400 rounded outline-none focus:border-red-500 text-sm"
-            onChange={(e) => setSource(e.target.value)}>
-            <option value="">How did you find us?</option>
-            <option value="Tiktok">Tiktok</option>
-            <option value="Instagram">Instagram</option>
-            <option value="Search">Google Search</option>
-            <option value="Friend">A Friend</option>
-          </select>
 
-          <button type="submit" className="w-full p-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded transition-all active:scale-95">
-            INITIALIZE SYSTEM
-          </button>
-        </form>
+        {/* LOGIN CARD */}
+        <div className="bg-[#0f172a] p-8 rounded-[2rem] border border-slate-800 shadow-2xl">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 ml-1">
+                Your Developer Name
+              </label>
+              <input
+                autoFocus
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Satoshi_Dev"
+                className="w-full bg-[#020617] border border-slate-700 text-white rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-700"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-all text-xs uppercase tracking-widest"
+            >
+              Get Started
+            </button>
+          </form>
+
+          <div className="mt-8 text-center">
+            <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">
+              By joining, you agree to our Terms
+            </p>
+          </div>
+        </div>
+
+        {/* ALREADY HAVE ACCOUNT LINK */}
+        <p className="text-center mt-8 text-slate-500 text-xs font-medium">
+          Already have an account? <span className="text-blue-500 cursor-pointer hover:underline">Log in</span>
+        </p>
       </div>
     </div>
   );
-}
+};
+
+export default Login;
