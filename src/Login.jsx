@@ -1,60 +1,37 @@
-import React, { useState } from 'react';
-import Sharingan from './components/Sharingan';
+import { useState } from "react";
 
-const Login = ({ onLogin }) => {
-  const [name, setName] = useState("");
+export default function Login({ onLogin }) {
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (name.trim()) onLogin(name.trim());
+  const handleSubmit = () => {
+    if (!email || !username || !password) return;
+
+    onLogin({ email, username, password });
   };
 
   return (
-    <div className="h-screen w-full bg-[#020617] flex items-center justify-center p-6 font-sans selection:bg-red-500/30">
-      <div className="w-full max-w-sm animate-in">
-        
-        {/* LOGO & MASCOT ON TOP */}
-        <div className="text-center mb-10 flex flex-col items-center">
-          <Sharingan size="w-20 h-20" animate={true} />
-          <h1 className="text-4xl font-black text-white tracking-tighter mt-4 mb-2">
-            ZENIN<span className="text-blue-500">LABS</span>
-          </h1>
-          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em]">
-            Unlock Your Potential
-          </p>
-        </div>
+    <div className="h-screen flex items-center justify-center bg-[#020617] text-white">
+      <div className="bg-[#0b0f1a] p-10 rounded-3xl w-[360px] border border-white/10">
+        <h2 className="text-2xl font-black mb-6 italic">Login to ZENINLABS</h2>
 
-        {/* LOGIN CARD */}
-        <div className="bg-[#0f172a] p-10 rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-red-600"></div>
-          
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 ml-1">
-                Authenticate User
-              </label>
-              <input
-                autoFocus
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter Username..."
-                className="w-full bg-[#020617] border border-slate-700 text-white rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-800"
-                required
-              />
-            </div>
+        <input placeholder="Email" onChange={e=>setEmail(e.target.value)}
+          className="w-full mb-3 p-3 bg-black/40 rounded-xl outline-none" />
 
-            <button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-all text-[11px] uppercase tracking-[0.2em]"
-            >
-              Authenticate
-            </button>
-          </form>
-        </div>
+        <input placeholder="Username" onChange={e=>setUsername(e.target.value)}
+          className="w-full mb-3 p-3 bg-black/40 rounded-xl outline-none" />
+
+        <input type="password" placeholder="Password"
+          onChange={e=>setPassword(e.target.value)}
+          className="w-full mb-6 p-3 bg-black/40 rounded-xl outline-none" />
+
+        <button onClick={handleSubmit}
+          className="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-xs">
+          Enter Dojo
+        </button>
       </div>
     </div>
   );
-};
+}
 
-export default Login;
