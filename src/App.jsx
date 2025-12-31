@@ -1,114 +1,56 @@
-import { useEffect, useState } from "react";
 import Login from "./Login";
-import lessons from "./lessons"; // keep your existing lessons import
+import lessons from "./lessons";
+import Mascot from "./components/Mascot";
+import CodeEditor from "./components/CodeEditor";
+import { useUser } from "./context/UserContext";
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [view, setView] = useState("login");
-  const [currentLesson, setCurrentLesson] = useState(lessons[0]);
+  const { user, completeLesson } = useUser();
+  const [current, setCurrent] = useState(lessons[0]);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("zn_user");
-    if (saved) {
-      setUser(JSON.parse(saved));
-      setView("ide");
-    }
-  }, []);
-
-  if (view === "login") {
-    return (
-      <Login
-        onLogin={(data) => {
-          const userData = {
-            email: data.email,
-            username: data.username,
-            password: data.password, // temp (Firebase later)
-            joined: new Date().toISOString(),
-            streak: 1,
-            points: 0
-          };
-
-          localStorage.setItem("zn_user", JSON.stringify(userData));
-          setUser(userData);
-          setView("ide");
-        }}
-      />
-    );
-  }
+  if (!user) return <Login />;
 
   return (
     <div className="h-screen bg-[#020617] text-white flex flex-col">
-      {/* NAVBAR */}
-      <nav className="h-14 flex items-center justify-between px-6 border-b border-white/10">
-        <div className="flex items-center gap-6">
-          <div className="font-black italic text-red-500">
-            ZENINLABS
-          </div>
-
-          {["PYTHON", "SQL", "HTML", "CSS", "GO", "C", "CPP", "R"].map(lang => (
-            <button
-              key={lang}
-              className="text-[10px] font-black hover:text-red-400"
-            >
-              {lang}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="text-[10px] font-black text-orange-400">
-            STREAK: {user.streak}
-          </div>
-          <div className="text-[10px] font-black text-blue-400">
-            @{user.username}
-          </div>
-        </div>
+      <nav className="h-14 flex items-center px-6 gap-4 border-b">
+        <Mascot />
+        <span className="font-black italic">ZENINLABS</span>
+        <span className="ml-auto text-xs">XP {user.xp}</span>
       </nav>
 
-      {/* MAIN */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* LESSON LIST */}
-        <aside className="w-64 border-r border-white/10 overflow-y-auto">
-          {lessons.map((lesson, i) => (
+      <div className="flex flex-1">
+        <aside className="w-64 border-r overflow-y-auto">
+          {lessons.map(l => (
             <div
-              key={i}
-              onClick={() => setCurrentLesson(lesson)}
-              className={`p-4 cursor-pointer text-xs font-black ${
-                currentLesson.title === lesson.title
-                  ? "bg-white/10"
-                  : "hover:bg-white/5"
-              }`}
+              key={l.id}
+              onClick={() => setCurrent(l)}
+              className="p-4 hover:bg-white/5 cursor-pointer"
             >
-              MODULE {i + 1}
-              <div className="text-white/70 font-normal">
-                {lesson.title}
-              </div>
+              {l.title}
             </div>
           ))}
         </aside>
 
-        {/* LESSON + EDITOR */}
-        <main className="flex-1 flex">
-          {/* LESSON CONTENT */}
-          <section className="w-1/2 p-6 overflow-y-auto">
-            <h1 className="text-xl font-black mb-4">
-              {currentLesson.title}
-            </h1>
-            <pre className="text-sm whitespace-pre-wrap text-white/80">
-              {currentLesson.content}
-            </pre>
+        <main className="flex flex-1">
+          <section className="w-1/2 p-6">
+            <h1 className="text-xl font-black">{current.title}</h1>
+            <pre className="mt-4 text-sm">{current.content}</pre>
+
+            <button
+              onClick={() => completeLesson(current.course, current.id)}
+              className="mt-6 bg-green-600 px-4 py-2 rounded"
+            >
+              Mark Complete (+10 XP)
+            </button>
           </section>
 
-          {/* CODE EDITOR */}
-          <section className="w-1/2 p-6 border-l border-white/10">
-            <textarea
-              className="w-full h-full bg-black/50 p-4 rounded-xl outline-none text-sm font-mono"
-              placeholder="Write your code here..."
-            />
+          <section className="w-1/2 border-l">
+            <CodeEditor language={current.language} />
           </section>
         </main>
       </div>
     </div>
   );
 }
+
 
