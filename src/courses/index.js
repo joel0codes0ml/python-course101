@@ -1,19 +1,26 @@
-import { pythonLessons } from "./python.js";
-import { htmlLessons } from "./html.js";
-import { clLessons } from "./clessons.js";
-import { cppLessons } from "./cpplessons.js";
-import { cssLessons } from "./css.js";
-import { goLessons } from "./golessons.js";
-import { sqlLessons } from "./sqllessons.js";
-import { rLessons } from "./Rlessons.js";
+// src/courses/index.js
 
-export const allCourses = {
-  PYTHON: { icon: "🐍", lessons: pythonLessons },
-  SQL: { icon: "🗄️", lessons: sqlLessons },
-  HTML: { icon: "🌐", lessons: htmlLessons },
-  CSS: { icon: "🎨", lessons: cssLessons },
-  GO: { icon: "🐹", lessons: goLessons },
-  C: { icon: "⚙️", lessons: clLessons },
-  CPP: { icon: "🚀", lessons: cppLessons },
-  R: { icon: "📊", lessons: rLessons }
+import * as htmlMod from "./html.js";
+import * as cssMod from "./css.js";
+import * as pythonMod from "./python.js";
+import * as cMod from "./clessons.js";
+import * as cppMod from "./cpplessons.js";
+import * as goMod from "./golessons.js";
+import * as sqlMod from "./sqllessons.js";
+import * as rMod from "./Rlessons.js";
+
+// This helper function finds the data array inside each file 
+// regardless of how you capitalized the variable name inside the file.
+const getLessons = (mod) => {
+  return Object.values(mod).find(val => Array.isArray(val)) || [];
 };
+
+// THESE NAMES MUST MATCH YOUR App.jsx IMPORTS EXACTLY
+export const htmlLessons = getLessons(htmlMod);
+export const cssLessons = getLessons(cssMod);
+export const pythonLessons = getLessons(pythonMod);
+export const clLessons = getLessons(cMod);
+export const cppLessons = getLessons(cppMod);
+export const goLessons = getLessons(goMod);
+export const sqlLessons = getLessons(sqlMod);
+export const rLessons = getLessons(rMod);
