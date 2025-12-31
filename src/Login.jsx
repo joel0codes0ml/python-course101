@@ -1,37 +1,47 @@
 import { useState } from "react";
+import { auth } from "./firebase";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword
+} from "firebase/auth";
 
-export default function Login({ onLogin }) {
+export default function Login() {
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = () => {
-    if (!email || !username || !password) return;
-
-    onLogin({ email, username, password });
-  };
+  const login = () => signInWithEmailAndPassword(auth, email, password);
+  const register = () => createUserWithEmailAndPassword(auth, email, password);
 
   return (
     <div className="h-screen flex items-center justify-center bg-[#020617] text-white">
-      <div className="bg-[#0b0f1a] p-10 rounded-3xl w-[360px] border border-white/10">
-        <h2 className="text-2xl font-black mb-6 italic">Login to ZENINLABS</h2>
+      <div className="w-[350px] p-8 bg-black/40 rounded-3xl">
+        <h1 className="text-3xl font-black italic text-center mb-6">
+          ZENINLABS
+        </h1>
 
-        <input placeholder="Email" onChange={e=>setEmail(e.target.value)}
-          className="w-full mb-3 p-3 bg-black/40 rounded-xl outline-none" />
+        <input
+          placeholder="Email"
+          className="w-full p-3 mb-3 rounded bg-black/50"
+          onChange={e => setEmail(e.target.value)}
+        />
 
-        <input placeholder="Username" onChange={e=>setUsername(e.target.value)}
-          className="w-full mb-3 p-3 bg-black/40 rounded-xl outline-none" />
+        <input
+          type="password"
+          placeholder="Password"
+          className="w-full p-3 mb-6 rounded bg-black/50"
+          onChange={e => setPassword(e.target.value)}
+        />
 
-        <input type="password" placeholder="Password"
-          onChange={e=>setPassword(e.target.value)}
-          className="w-full mb-6 p-3 bg-black/40 rounded-xl outline-none" />
+        <button onClick={login} className="w-full bg-red-600 py-3 rounded mb-2">
+          Login
+        </button>
 
-        <button onClick={handleSubmit}
-          className="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-xs">
-          Enter Dojo
+        <button onClick={register} className="w-full border py-3 rounded">
+          Register
         </button>
       </div>
     </div>
   );
 }
+
 
