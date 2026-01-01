@@ -1,16 +1,25 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  base: '/',
-  build: {
-    outDir: 'dist',
+  optimizeDeps: {
+    include: [
+      "firebase/app",
+      "firebase/auth",
+      "firebase/firestore"
+    ]
   },
-  server: {
-    proxy: {
-      '/api': 'http://localhost:5000'
+  build: {
+    rollupOptions: {
+      // treat firebase modules as external
+      external: [
+        "firebase/app",
+        "firebase/auth",
+        "firebase/firestore"
+      ]
     }
   }
 });
+
 
