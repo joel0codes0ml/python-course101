@@ -1,7 +1,8 @@
+// src/App.jsx
 import { useState } from "react";
-import Login from "./Login";
-import Mascot from "./components/Mascot";
-import CodeEditor from "./components/CodeEditor";
+import Login from "./Login.jsx";
+import Mascot from "./components/Mascot.jsx";
+import CodeEditor from "./components/CodeEditor.jsx";
 import { useUser } from "./context/UserContext.jsx";
 
 import {
@@ -28,36 +29,23 @@ const languages = [
 
 export default function App() {
   const { user, completeLesson } = useUser();
-
   const [currentLanguage, setCurrentLanguage] = useState(languages[0]);
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
-
   const lessons = currentLanguage.lessons;
   const current = lessons[currentLessonIndex];
 
-  if (!user) return <Login />;
+  if (!user) return <Login onLogin={() => {}} />;
 
-  function goNextLesson() {
-    if (currentLessonIndex < lessons.length - 1) {
-      setCurrentLessonIndex(currentLessonIndex + 1);
-    }
-  }
-
-  function goPrevLesson() {
-    if (currentLessonIndex > 0) {
-      setCurrentLessonIndex(currentLessonIndex - 1);
-    }
-  }
-
-  function changeLanguage(langName) {
-    const selected = languages.find((l) => l.name === langName);
+  const goNextLesson = () => currentLessonIndex < lessons.length - 1 && setCurrentLessonIndex(currentLessonIndex + 1);
+  const goPrevLesson = () => currentLessonIndex > 0 && setCurrentLessonIndex(currentLessonIndex - 1);
+  const changeLanguage = (langName) => {
+    const selected = languages.find(l => l.name === langName);
     setCurrentLanguage(selected);
     setCurrentLessonIndex(0);
-  }
+  };
 
   return (
     <div className="h-screen bg-[#020617] text-white flex flex-col">
-      {/* Navbar */}
       <nav className="h-14 flex items-center px-6 gap-4 border-b">
         <Mascot />
         <span className="font-black italic">ZENINLABS</span>
@@ -65,71 +53,33 @@ export default function App() {
       </nav>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar: Language Selector */}
         <aside className="w-48 border-r bg-gray-800 p-4 flex flex-col gap-2 overflow-y-auto">
           <h2 className="text-lg font-bold mb-2">Languages</h2>
-          {languages.map((lang) => (
-            <button
-              key={lang.name}
-              className={`p-2 rounded ${
-                lang.name === currentLanguage.name
-                  ? "bg-green-600"
-                  : "hover:bg-gray-700"
-              }`}
-              onClick={() => changeLanguage(lang.name)}
-            >
+          {languages.map(lang => (
+            <button key={lang.name} className={`p-2 rounded ${lang.name === currentLanguage.name ? "bg-green-600" : "hover:bg-gray-700"}`} onClick={() => changeLanguage(lang.name)}>
               {lang.name}
             </button>
           ))}
-
           <hr className="my-2 border-gray-600" />
-
           <h2 className="text-lg font-bold mb-2">Lessons</h2>
           {lessons.map((l, idx) => (
-            <div
-              key={l.id}
-              onClick={() => setCurrentLessonIndex(idx)}
-              className={`p-2 hover:bg-white/5 cursor-pointer rounded ${
-                idx === currentLessonIndex ? "bg-white/10" : ""
-              }`}
-            >
+            <div key={l.id} onClick={() => setCurrentLessonIndex(idx)} className={`p-2 hover:bg-white/5 cursor-pointer rounded ${idx === currentLessonIndex ? "bg-white/10" : ""}`}>
               {l.title}
             </div>
           ))}
         </aside>
 
-        {/* Main Content: Lesson + Editor */}
         <main className="flex flex-1">
-          {/* Lesson Content */}
           <section className="w-1/2 p-6 overflow-y-auto">
             <h1 className="text-xl font-black">{current.title}</h1>
             <pre className="mt-4 text-sm whitespace-pre-wrap">{current.content}</pre>
-
             <div className="flex gap-2 mt-6">
-              <button
-                onClick={() => completeLesson(currentLanguage.name, current.id)}
-                className="bg-green-600 px-4 py-2 rounded"
-              >
-                Mark Complete (+10 XP)
-              </button>
-              <button
-                onClick={goPrevLesson}
-                disabled={currentLessonIndex === 0}
-                className="bg-gray-700 px-4 py-2 rounded disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <button
-                onClick={goNextLesson}
-                disabled={currentLessonIndex === lessons.length - 1}
-                className="bg-green-600 px-4 py-2 rounded disabled:opacity-50"
-              >
-                Next
-              </button>
+              <button onClick={() => completeLesson(currentLanguage.name, current.id)} className="bg-green-600 px-4 py-2 rounded">Mark Complete (+10 XP)</button>
+              <button onClick={goPrevLesson} disabled={currentLessonIndex === 0} className="bg-gray-700 px-4 py-2 rounded disabled:opacity-50">Previous</button>
+              <button onClick={goNextLesson} disabled={currentLessonIndex === lessons.length - 1} className="bg-green-600 px-4 py-2 rounded disabled:opacity-50">Next</button>
             </div>
           </section>
 
-          {/* Code Editor */}
           <section className="w-1/2 border-l p-4 flex flex-col">
             <CodeEditor
               language={currentLanguage.name.toLowerCase()}
@@ -143,6 +93,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
