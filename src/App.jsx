@@ -2,7 +2,7 @@ import { useState } from "react";
 import Login from "./Login";
 import Mascot from "./components/Mascot";
 import CodeEditor from "./components/CodeEditor";
-import { useUser } from "./context/UserContext";
+import { useUser } from "./context/UserContext.jsx";
 
 import {
   htmlLessons,
