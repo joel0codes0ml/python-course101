@@ -1,9 +1,7 @@
-// src/App.jsx
-import { useState, useEffect } from "react";
-import Login from "./Login.jsx";
+import { useState } from "react";
+import Login from "./Login.jsx"; // optional, in case you want logout
 import Mascot from "./components/Mascot.jsx";
 import CodeEditor from "./components/CodeEditor.jsx";
-import { onAuthChange } from "./firebase.js";
 
 import {
   htmlLessons,
@@ -27,28 +25,29 @@ const languages = [
   { name: "CSS", lessons: cssLessons }
 ];
 
-export default function App() {
-  const [user, setUser] = useState(null);
+export default function App({ user }) {
   const [currentLanguage, setCurrentLanguage] = useState(languages[0]);
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
 
   const lessons = currentLanguage.lessons;
   const current = lessons[currentLessonIndex];
 
-  // Subscribe to Firebase auth changes
-  useEffect(() => {
-    const unsubscribe = onAuthChange((u) => setUser(u));
-    return () => unsubscribe();
-  }, []);
-
-  if (!user) return <Login onLogin={setUser} />;
-
-  const goNextLesson = () => currentLessonIndex < lessons.length - 1 && setCurrentLessonIndex(currentLessonIndex + 1);
-  const goPrevLesson = () => currentLessonIndex > 0 && setCurrentLessonIndex(currentLessonIndex - 1);
+  const goNextLesson = () => {
+    if (currentLessonIndex < lessons.length - 1) setCurrentLessonIndex(currentLessonIndex + 1);
+  };
+  const goPrevLesson = () => {
+    if (currentLessonIndex > 0) setCurrentLessonIndex(currentLessonIndex - 1);
+  };
   const changeLanguage = (langName) => {
     const selected = languages.find(l => l.name === langName);
     setCurrentLanguage(selected);
     setCurrentLessonIndex(0);
+  };
+
+  // Optional: mark lesson complete locally (or update Firestore)
+  const completeLesson = (langName, lessonId) => {
+    console.log(`User completed lesson ${lessonId} in ${langName}`);
+    // You can implement Firestore update here
   };
 
   return (
@@ -56,20 +55,31 @@ export default function App() {
       <nav className="h-14 flex items-center px-6 gap-4 border-b">
         <Mascot />
         <span className="font-black italic">ZENINLABS</span>
+        <span className="ml-auto text-xs">XP {user.xp}</span>
       </nav>
 
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-48 border-r bg-gray-800 p-4 flex flex-col gap-2 overflow-y-auto">
           <h2 className="text-lg font-bold mb-2">Languages</h2>
           {languages.map(lang => (
-            <button key={lang.name} className={`p-2 rounded ${lang.name === currentLanguage.name ? "bg-green-600" : "hover:bg-gray-700"}`} onClick={() => changeLanguage(lang.name)}>
+            <button 
+              key={lang.name} 
+              className={`p-2 rounded ${lang.name === currentLanguage.name ? "bg-green-600" : "hover:bg-gray-700"}`} 
+              onClick={() => changeLanguage(lang.name)}
+            >
               {lang.name}
             </button>
           ))}
+
           <hr className="my-2 border-gray-600" />
+
           <h2 className="text-lg font-bold mb-2">Lessons</h2>
           {lessons.map((l, idx) => (
-            <div key={l.id} onClick={() => setCurrentLessonIndex(idx)} className={`p-2 hover:bg-white/5 cursor-pointer rounded ${idx === currentLessonIndex ? "bg-white/10" : ""}`}>
+            <div 
+              key={l.id} 
+              onClick={() => setCurrentLessonIndex(idx)} 
+              className={`p-2 hover:bg-white/5 cursor-pointer rounded ${idx === currentLessonIndex ? "bg-white/10" : ""}`}
+            >
               {l.title}
             </div>
           ))}
@@ -80,6 +90,7 @@ export default function App() {
             <h1 className="text-xl font-black">{current.title}</h1>
             <pre className="mt-4 text-sm whitespace-pre-wrap">{current.content}</pre>
             <div className="flex gap-2 mt-6">
+              <button onClick={() => completeLesson(currentLanguage.name, current.id)} className="bg-green-600 px-4 py-2 rounded">Mark Complete (+10 XP)</button>
               <button onClick={goPrevLesson} disabled={currentLessonIndex === 0} className="bg-gray-700 px-4 py-2 rounded disabled:opacity-50">Previous</button>
               <button onClick={goNextLesson} disabled={currentLessonIndex === lessons.length - 1} className="bg-green-600 px-4 py-2 rounded disabled:opacity-50">Next</button>
             </div>
@@ -98,6 +109,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
