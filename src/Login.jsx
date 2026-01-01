@@ -1,6 +1,5 @@
 import { useState } from "react";
 import Sharingan from "./components/Sharingan.jsx";
-// Importing the helpers you just pasted
 import { 
   signUpWithEmail, 
   loginWithEmail, 
@@ -15,51 +14,42 @@ export default function Login({ onLogin }) {
   const [username, setUsername] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [isTypingPassword, setIsTypingPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // NEW: To handle slow connections
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLoading) return; // Prevent double clicks
+    
     setError("");
+    setIsLoading(true);
 
     try {
       if (isRegistering) {
-        // 1. Create User in Auth
+        // 1. Create User
         const user = await signUpWithEmail(email, password, username);
         
-        // 2. Create Profile in Firestore using your helper
-        const profileData = { username, email };
+        // 2. FORCE AWAIT Database entry
+        const profileData = { username, email, xp: 0 };
         await createUserProfile(user.uid, profileData);
         
-        onLogin({ uid: user.uid, ...profileData, xp: 0 });
+        // 3. Move to App
+        onLogin({ uid: user.uid, ...profileData });
       } else {
-        // 3. Login Existing User
+        // LOGIN PATH
         const user = await loginWithEmail(email, password);
         const profile = await getUserProfile(user.uid);
-        
-        if (profile) {
-          onLogin({ uid: user.uid, ...profile });
-        } else {
-          // Fallback if profile doesn't exist yet
-          onLogin({ uid: user.uid, email: user.email, username: user.displayName || "Ninja" });
-        }
+        onLogin({ uid: user.uid, ...profile });
       }
     } catch (err) {
-      // Clean up Firebase error messages for the UI
-      const cleanError = err.message.replace("Firebase: ", "").replace("auth/", "");
-      setError(cleanError);
-    }
-  };
-
-  const handleAppleLogin = async () => {
-    try {
-      const user = await loginWithApple();
-      const profile = await getUserProfile(user.uid);
-      if (!profile) {
-        await createUserProfile(user.uid, { username: user.displayName || "AppleNinja", email: user.email });
+      console.error(err);
+      if (err.message.includes("unavailable")) {
+        setError("LAB_CONNECTION_ERROR: Retrying...");
+      } else {
+        setError(err.message.replace("Firebase: ", "").replace("auth/", ""));
       }
-      onLogin(user);
-    } catch (err) {
-      setError("Apple Authentication Failed.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -82,11 +72,9 @@ export default function Login({ onLogin }) {
     },
     socialBtn: (isApple) => ({
       width: '100%', padding: '12px', borderRadius: '8px',
-      backgroundColor: isApple ? '#fff' : 'transparent',
-      color: isApple ? '#000' : '#fff',
-      border: isApple ? 'none' : '1px solid #1e293b',
-      fontWeight: '700', fontSize: '12px', cursor: 'pointer',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      backgroundColor: isApple ? '#fff' : 'transparent', color: isApple ? '#000' : '#fff',
+      border: isApple ? 'none' : '1px solid #1e293b', fontWeight: '700', fontSize: '12px',
+      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
       gap: '10px', marginTop: '10px'
     })
   };
@@ -100,57 +88,49 @@ export default function Login({ onLogin }) {
             to { transform: rotate(360deg); }
           }
           .sh-logo {
-            animation: sharingan-spin ${isTypingPassword ? '0.5s' : '4s'} linear infinite;
+            animation: sharingan-spin ${isTypingPassword || isLoading ? '0.5s' : '4s'} linear infinite;
           }
         `}
       </style>
 
       <div style={ui.card}>
-        {/* LOGO */}
         <div className="sh-logo" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center' }}>
           <Sharingan width={80} height={80} />
         </div>
 
-        <h1 style={{ fontSize: '28px', fontWeight: '900', marginBottom: '4px', fontStyle: 'italic' }}>
+        <h1 style={{ fontSize: '28px', fontWeight: '900', marginBottom: '30px', fontStyle: 'italic' }}>
           ZENIN<span style={{ color: '#ef4444' }}>LABS</span>
         </h1>
-        <p style={{ fontSize: '10px', color: '#475569', letterSpacing: '3px', marginBottom: '30px' }}>AUTHENTICATE</p>
 
         <form onSubmit={handleSubmit}>
           {isRegistering && (
-            <input placeholder="USERNAME" style={ui.input} onChange={e => setUsername(e.target.value)} />
+            <input placeholder="USERNAME" style={ui.input} onChange={e => setUsername(e.target.value)} disabled={isLoading} />
           )}
-          <input type="email" placeholder="EMAIL ADDRESS" style={ui.input} onChange={e => setEmail(e.target.value)} />
+          <input type="email" placeholder="EMAIL ADDRESS" style={ui.input} onChange={e => setEmail(e.target.value)} disabled={isLoading} />
           <input 
             type="password" placeholder="PASSWORD" style={ui.input} 
             onFocus={() => setIsTypingPassword(true)}
             onBlur={() => setIsTypingPassword(false)}
             onChange={e => setPassword(e.target.value)} 
+            disabled={isLoading}
           />
 
           {error && <p style={{ color: '#ef4444', fontSize: '10px', marginBottom: '10px' }}>{error}</p>}
 
-          <button type="submit" style={ui.primaryBtn}>
-            {isRegistering ? "INITIALIZE ACCOUNT" : "LOGIN TO LAB"}
+          <button type="submit" style={{...ui.primaryBtn, opacity: isLoading ? 0.5 : 1}} disabled={isLoading}>
+            {isLoading ? "ESTABLISHING_LINK..." : (isRegistering ? "INITIALIZE ACCOUNT" : "LOGIN TO LAB")}
           </button>
 
-          <div style={{ margin: '20px 0', fontSize: '10px', color: '#475569', fontWeight: 'bold' }}>OR</div>
-
-          <button type="button" onClick={handleAppleLogin} style={ui.socialBtn(true)}>
-            <span style={{ fontSize: '16px' }}></span> Sign in with Apple
-          </button>
-
-          <button type="button" style={ui.socialBtn(false)}>
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/smartlock/google.svg" width="14" alt="Google" />
-            Sign in with Google
-          </button>
-
-          <p 
-            onClick={() => setIsRegistering(!isRegistering)} 
-            style={{ marginTop: '25px', fontSize: '10px', color: '#64748b', cursor: 'pointer', textDecoration: 'underline' }}
-          >
-            {isRegistering ? "ALREADY A NINJA? LOGIN" : "NEW SUBJECT? REGISTER"}
-          </p>
+          {!isLoading && (
+            <>
+              <div style={{ margin: '20px 0', fontSize: '10px', color: '#475569', fontWeight: 'bold' }}>OR</div>
+              <button type="button" onClick={loginWithApple} style={ui.socialBtn(true)}>Sign in with Apple</button>
+              <button type="button" style={ui.socialBtn(false)}>Sign in with Google</button>
+              <p onClick={() => setIsRegistering(!isRegistering)} style={{ marginTop: '25px', fontSize: '10px', color: '#64748b', cursor: 'pointer', textDecoration: 'underline' }}>
+                {isRegistering ? "ALREADY A NINJA? LOGIN" : "NEW SUBJECT? REGISTER"}
+              </p>
+            </>
+          )}
         </form>
       </div>
     </div>
