@@ -11,90 +11,152 @@ export default function Login({ onLogin }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!email || !password || (isRegistering && !username)) {
-      setError("Field requirements not met.");
+      setError("Please fill in all fields.");
       return;
     }
-
     const userData = {
       uid: "user_" + Math.random().toString(36).substr(2, 9),
       username: username || email.split('@')[0],
       email: email,
       xp: 0
     };
-
     localStorage.setItem("zn_user", JSON.stringify(userData));
     onLogin(userData);
   };
 
-  return (
-    <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020617', color: '#fff', fontFamily: 'sans-serif', margin: 0, overflow: 'hidden' }}>
-      
-      {/* BACKGROUND DECOR (Subtle Glows) */}
-      <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '40%', height: '40%', background: 'rgba(239, 68, 68, 0.05)', filter: 'blur(100px)', borderRadius: '50%' }} />
-      <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '40%', height: '40%', background: 'rgba(34, 197, 94, 0.05)', filter: 'blur(100px)', borderRadius: '50%' }} />
+  // RAW CSS OBJECTS (This replaces Tailwind)
+  const ui = {
+    screen: {
+      height: '100vh',
+      width: '100vw',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#020617', // The Deep Lab Blue
+      color: '#ffffff',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+      margin: 0,
+      overflow: 'hidden'
+    },
+    box: {
+      width: '100%',
+      maxWidth: '360px',
+      padding: '20px',
+      textAlign: 'center',
+      zIndex: 2
+    },
+    input: (borderColor) => ({
+      width: '100%',
+      padding: '14px 16px',
+      marginBottom: '12px',
+      borderRadius: '12px',
+      border: `1px solid ${borderColor}`,
+      backgroundColor: '#000000',
+      color: borderColor === '#ef4444' ? '#ef4444' : '#22c55e',
+      fontSize: '14px',
+      outline: 'none',
+      boxSizing: 'border-box',
+      transition: 'all 0.2s'
+    }),
+    actionBtn: {
+      width: '100%',
+      padding: '16px',
+      borderRadius: '12px',
+      backgroundColor: '#ef4444',
+      color: '#fff',
+      border: 'none',
+      fontWeight: '800',
+      fontSize: '12px',
+      cursor: 'pointer',
+      letterSpacing: '1px',
+      textTransform: 'uppercase',
+      marginTop: '10px'
+    },
+    socialBtn: (bgColor, textColor) => ({
+      width: '100%',
+      padding: '12px',
+      borderRadius: '12px',
+      backgroundColor: bgColor,
+      color: textColor,
+      border: bgColor === 'transparent' ? '1px solid #1e293b' : 'none',
+      fontWeight: '600',
+      fontSize: '12px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '10px',
+      marginTop: '10px'
+    })
+  };
 
-      <div style={{ width: '100%', maxWidth: '380px', textAlign: 'center', zIndex: 10 }}>
-        
-        {/* 1. SHARINGAN LOGO */}
-        <div style={{ marginBottom: '24px' }}>
-          <Sharingan width={80} height={80} />
+  return (
+    <div style={ui.screen}>
+      {/* Visual background accents */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%)', zIndex: 1 }} />
+      
+      <div style={ui.box}>
+        <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center' }}>
+          <Sharingan width={70} height={70} />
         </div>
 
-        <h1 style={{ fontSize: '32px', fontWeight: '900', fontStyle: 'italic', marginBottom: '32px', letterSpacing: '-1px' }}>
+        <h1 style={{ fontSize: '32px', fontWeight: '900', fontStyle: 'italic', margin: '0 0 4px 0', letterSpacing: '-1px' }}>
           ZENIN<span style={{ color: '#ef4444' }}>LABS</span>
         </h1>
+        <p style={{ fontSize: '10px', color: '#475569', fontWeight: '800', letterSpacing: '3px', marginBottom: '30px' }}>AUTHENTICATE</p>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          
-          {/* 2. USERNAME (Only for Register) */}
+        <form onSubmit={handleSubmit}>
           {isRegistering && (
             <input 
-              type="text" placeholder="Username" 
-              style={{ padding: '16px', borderRadius: '12px', border: '1px solid #1e293b', backgroundColor: '#000', color: '#22c55e', outline: 'none', fontSize: '14px' }}
-              onChange={e => setUsername(e.target.value)}
+               placeholder="Username" 
+               style={ui.input('#1e293b')} 
+               onChange={e => setUsername(e.target.value)} 
             />
           )}
-
-          {/* 3. EMAIL */}
+          
           <input 
-            type="email" placeholder="Email Address" 
-            style={{ padding: '16px', borderRadius: '12px', border: '1px solid #1e293b', backgroundColor: '#000', color: '#22c55e', outline: 'none', fontSize: '14px' }}
-            onChange={e => setEmail(e.target.value)}
+            type="email" 
+            placeholder="Email Address" 
+            style={ui.input('#1e293b')} 
+            onChange={e => setEmail(e.target.value)} 
+          />
+          
+          <input 
+            type="password" 
+            placeholder="Password" 
+            style={ui.input('#1e293b')} 
+            onFocus={(e) => e.target.style.borderColor = '#ef4444'}
+            onBlur={(e) => e.target.style.borderColor = '#1e293b'}
+            onChange={e => setPassword(e.target.value)} 
           />
 
-          {/* 4. PASSWORD */}
-          <input 
-            type="password" placeholder="Password" 
-            style={{ padding: '16px', borderRadius: '12px', border: '1px solid #1e293b', backgroundColor: '#000', color: '#ef4444', outline: 'none', fontSize: '14px' }}
-            onChange={e => setPassword(e.target.value)}
-          />
+          {error && <p style={{ color: '#ef4444', fontSize: '11px', margin: '10px 0' }}>{error}</p>}
 
-          {error && <p style={{ color: '#ef4444', fontSize: '12px', fontWeight: 'bold' }}>{error}</p>}
-
-          <button type="submit" style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#22c55e', color: '#000', border: 'none', fontWeight: '900', fontSize: '12px', cursor: 'pointer', marginTop: '12px', letterSpacing: '1px' }}>
-            {isRegistering ? "CREATE ACCOUNT" : "LOGIN"}
+          <button type="submit" style={ui.actionBtn}>
+            {isRegistering ? "Create Account" : "Enter the Lab"}
           </button>
 
-          <div style={{ margin: '16px 0', fontSize: '10px', color: '#475569', fontWeight: 'bold' }}>OR CONTINUE WITH</div>
+          <div style={{ margin: '20px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+             <div style={{ flex: 1, height: '1px', backgroundColor: '#1e293b' }} />
+             <span style={{ fontSize: '10px', color: '#475569', fontWeight: 'bold' }}>OR</span>
+             <div style={{ flex: 1, height: '1px', backgroundColor: '#1e293b' }} />
+          </div>
 
-          {/* 5. APPLE LOGIN */}
-          <button type="button" style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#fff', color: '#000', border: 'none', fontWeight: '700', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-             Sign in with Apple
+          <button type="button" style={ui.socialBtn('#ffffff', '#000000')}>
+            <span style={{ fontSize: '18px' }}></span> Sign in with Apple
           </button>
 
-          {/* 6. GOOGLE LOGIN */}
-          <button type="button" style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'transparent', color: '#fff', border: '1px solid #1e293b', fontWeight: '700', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/smartlock/google.svg" width="16" alt="Google" />
+          <button type="button" style={ui.socialBtn('transparent', '#ffffff')}>
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/smartlock/google.svg" width="16" />
             Sign in with Google
           </button>
 
-          <button 
-            type="button"
-            onClick={() => setIsRegistering(!isRegistering)}
-            style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', marginTop: '20px' }}
+          <p 
+            onClick={() => setIsRegistering(!isRegistering)} 
+            style={{ marginTop: '20px', fontSize: '11px', color: '#64748b', cursor: 'pointer' }}
           >
-            {isRegistering ? "ALREADY HAVE AN ACCOUNT? LOG IN" : "NEW NINJA? REGISTER HERE"}
-          </button>
+            {isRegistering ? "Return to Login" : "New Ninja? Register Here"}
+          </p>
         </form>
       </div>
     </div>
