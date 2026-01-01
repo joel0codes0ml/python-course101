@@ -1,14 +1,25 @@
 import { useState } from "react";
 import Mascot from "./components/Mascot.jsx";
 import CodeEditor from "./components/CodeEditor.jsx";
-import { pythonLessons, clLessons, cppLessons, goLessons, sqlLessons, htmlLessons, cssLessons, rLessons } from "./courses/index.js";
+// Add all your imports here
+import { pythonLessons } from "./courses/python.js";
+import { clLessons } from "./courses/clessons.js";
+import { cppLessons } from "./courses/cpplessons.js";
+import { goLessons } from "./courses/golessons.js";
+import { sqlLessons } from "./courses/sqllessons.js";
+import { rLessons } from "./courses/Rlessons.js"; // New
+import { htmlLessons } from "./courses/html.js"; // New
+import { cssLessons } from "./courses/css.js"; // New
 
 const languages = [
-  { name: "Python", lessons: pythonLessons, id: "python", version: "3.10.0" },
-  { name: "C", lessons: clLessons, id: "c", version: "10.2.0" },
-  { name: "C++", lessons: cppLessons, id: "cpp", version: "10.2.0" },
-  { name: "Go", lessons: goLessons, id: "go", version: "1.16.2" },
-  { name: "SQL", lessons: sqlLessons, id: "sqlite3", version: "3.36.0" }
+  { name: "Python", lessons: pythonLessons, id: "python" },
+  { name: "C", lessons: clLessons, id: "c" },
+  { name: "C++", lessons: cppLessons, id: "cpp" },
+  { name: "Go", lessons: goLessons, id: "go" },
+  { name: "SQL", lessons: sqlLessons, id: "sqlite3" },
+  { name: "R", lessons: rLessons, id: "r" },
+  { name: "HTML", lessons: htmlLessons, id: "html" },
+  { name: "CSS", lessons: cssLessons, id: "css" }
 ];
 
 export default function App({ user }) {
