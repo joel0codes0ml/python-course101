@@ -1,4 +1,3 @@
-// src/firebase.js
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -11,7 +10,7 @@ import {
   onAuthStateChanged
 } from "firebase/auth";
 import {
-  getFirestore,
+  initializeFirestore, // Changed from getFirestore
   doc,
   setDoc,
   getDoc,
@@ -22,7 +21,7 @@ import {
   orderBy
 } from "firebase/firestore";
 
-// 🔥 Firebase config (YOUR REAL PROJECT)
+// 🔥 Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyC4iHWhpIWiDrkDK-bgYUHJcui_7Y54pwk",
   authDomain: "zeninlabs-546ab.firebaseapp.com",
@@ -35,9 +34,12 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Auth & DB
+// Auth & DB (The "Instant Connection" Fix)
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true, // Forces a faster, more reliable connection
+  useFetchStreams: false,             // Enhances compatibility
+});
 
 // ================= AUTH HELPERS =================
 
