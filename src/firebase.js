@@ -10,7 +10,7 @@ import {
   onAuthStateChanged
 } from "firebase/auth";
 import {
-  initializeFirestore, // Changed from getFirestore
+  initializeFirestore,
   doc,
   setDoc,
   getDoc,
@@ -18,10 +18,11 @@ import {
   collection,
   onSnapshot,
   query,
-  orderBy
+  orderBy,
+  persistentLocalCache, 
+  persistentMultipleTabManager
 } from "firebase/firestore";
 
-// 🔥 Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyC4iHWhpIWiDrkDK-bgYUHJcui_7Y54pwk",
   authDomain: "zeninlabs-546ab.firebaseapp.com",
@@ -31,25 +32,31 @@ const firebaseConfig = {
   appId: "1:790058421720:web:cbe60501b037a560a2f6ad",
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Auth & DB (The "Instant Connection" Fix)
 export const auth = getAuth(app);
+
+// SPEED FIX: Optimized for Vercel/Web production
 export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true, // Forces a faster, more reliable connection
-  useFetchStreams: false,             // Enhances compatibility
+  experimentalForceLongPolling: true,
+  useFetchStreams: false,
+  // This helps multiple tabs share the connection so it stays "warm"
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
 
 // ================= AUTH HELPERS =================
 
 export const signUpWithEmail = async (email, password, username) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
-  await updateProfile(cred.user, { displayName: username });
+  
+  // RUN IN BACKGROUND: Don't wait for the display name update to finish
+  updateProfile(cred.user, { displayName: username }).catch(e => console.error("Profile update failed", e));
+  
   return cred.user;
 };
 
 export const loginWithEmail = async (email, password) => {
+  // Simple, direct login
   const cred = await signInWithEmailAndPassword(auth, email, password);
   return cred.user;
 };
@@ -61,19 +68,20 @@ export const loginWithApple = async () => {
 };
 
 export const logout = () => signOut(auth);
-
 export const onAuthChange = (cb) => onAuthStateChanged(auth, cb);
 
 // ================= FIRESTORE HELPERS =================
 
 export const createUserProfile = async (uid, data) => {
   const ref = doc(db, "users", uid);
-  await setDoc(ref, {
+  // Set and forget
+  return setDoc(ref, {
     xp: 0,
     completedLessons: [],
     online: true,
+    createdAt: new Date().toISOString(),
     ...data,
-  });
+  }, { merge: true }); // Merge true prevents overwriting if double-called
 };
 
 export const getUserProfile = async (uid) => {
@@ -82,7 +90,8 @@ export const getUserProfile = async (uid) => {
 };
 
 export const updateUserProfile = async (uid, updates) => {
-  await updateDoc(doc(db, "users", uid), updates);
+  const ref = doc(db, "users", uid);
+  return updateDoc(ref, updates);
 };
 
 export const subscribeLeaderboard = (callback) => {
@@ -91,7 +100,5 @@ export const subscribeLeaderboard = (callback) => {
     callback(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
   });
 };
-
-
 
 
