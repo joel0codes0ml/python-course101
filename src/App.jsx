@@ -3,7 +3,7 @@ import { useState } from "react";
 import Login from "./Login.jsx";
 import Mascot from "./components/Mascot.jsx";
 import CodeEditor from "./components/CodeEditor.jsx";
-import { useUser } from "./context/UserContext.jsx";
+
 
 import {
   htmlLessons,
