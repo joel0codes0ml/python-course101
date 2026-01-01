@@ -1,4 +1,4 @@
-
+// src/firebase.js
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
@@ -83,5 +83,6 @@ export const subscribeLeaderboard = (callback) => {
     callback(users);
   });
 };
+
 
 
