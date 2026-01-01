@@ -1,54 +1,58 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Fira+Code:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
 
 body {
   margin: 0;
-  /* Inter is the industry standard for clean tech interfaces */
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
-  /* A deeper, richer navy for a premium "Pro" feel */
-  background-color: #020617; 
+  font-family: 'Inter', sans-serif;
+  background-color: #020617; /* Deepest Navy/Black */
   color: #f1f5f9;
-  
-  /* Smooths out font rendering on MacOS/Chrome */
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  
-  /* Prevents horizontal bounce on mobile */
-  overflow-x: hidden;
+  overflow: hidden; /* Prevents the whole page from scrolling */
 }
 
-/* Custom Scrollbar to match the Coddy.tech dark theme */
+/* Custom Scrollbar for the Lesson and Terminal Panels */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #020617;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #1e293b; /* Slate-800 */
   border-radius: 10px;
-  border: 2px solid #020617;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #ef4444; /* Zenin Red on hover */
 }
 
-/* Global Transition for View Switching */
+/* Animations for panel switching */
 .animate-in {
-  animation: fadeIn 0.4s ease-out forwards;
+  animation: panelSlide 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes fadeIn {
-  from { 
-    opacity: 0; 
-    transform: translateY(8px); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
-  }
+@keyframes panelSlide {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Typography for the Lesson Content */
+.prose p {
+  margin-bottom: 1.5rem;
+  line-height: 1.7;
+}
+
+/* Monaco Editor Background Override */
+.monaco-editor, .monaco-editor-background, .monaco-editor .inputarea.ime-input {
+  background-color: #000000 !important;
 }
