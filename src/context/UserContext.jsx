@@ -12,20 +12,14 @@ export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [progress, setProgress] = useState({});
 
-  // Listen for auth state changes
   useEffect(() => {
-    return onAuthStateChanged(auth, async (u) => {
-      if (!u) {
-        setUser(null);
-        setProgress({});
-        return;
-      }
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      if (!u) return setUser(null);
 
       const ref = doc(db, "users", u.uid);
       const snap = await getDoc(ref);
 
       if (!snap.exists()) {
-        // Create initial user profile
         await setDoc(ref, {
           username: u.email.split("@")[0],
           xp: 0,
@@ -34,18 +28,24 @@ export const UserProvider = ({ children }) => {
         });
       }
 
-      const data = snap.exists() ? snap.data() : {};
-      setUser({ uid: u.uid, ...data });
-      setProgress(data.completed || {});
+      const userData = snap.exists() ? snap.data() : {
+        username: u.email.split("@")[0],
+        xp: 0,
+        streak: 1,
+        completed: {}
+      };
+
+      setUser({ uid: u.uid, ...userData });
+      setProgress(userData.completed || {});
     });
+
+    return () => unsubscribe();
   }, []);
 
-  // Mark a lesson as complete
   const completeLesson = async (course, id) => {
     if (progress?.[course]?.includes(id)) return;
 
     const ref = doc(db, "users", user.uid);
-
     const updated = {
       ...progress,
       [course]: [...(progress[course] || []), id]
@@ -57,7 +57,7 @@ export const UserProvider = ({ children }) => {
     });
 
     setProgress(updated);
-    setUser((prev) => ({ ...prev, xp: prev.xp + 10 }));
+    setUser(prev => ({ ...prev, xp: prev.xp + 10 }));
   };
 
   return (
@@ -66,5 +66,6 @@ export const UserProvider = ({ children }) => {
     </UserContext.Provider>
   );
 };
+
 
 
