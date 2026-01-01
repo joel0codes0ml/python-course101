@@ -1,170 +1,73 @@
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
 
-/**
- * CodeEditor
- * - Language-aware editor
- * - Runs code via execution API
- * - Displays output & errors
- * - Designed for lesson validation + AI hints
- */
-export default function CodeEditor({
-  language = "python",
-  starterCode = "",
-  expectedOutput = "",
-  solution = ""
-}) {
-  const editorRef = useRef(null);
-
+export default function CodeEditor({ language, version, starterCode, expectedOutput, solution }) {
   const [code, setCode] = useState(starterCode);
   const [output, setOutput] = useState("");
-  const [error, setError] = useState("");
   const [isRunning, setIsRunning] = useState(false);
-  const [showSolution, setShowSolution] = useState(false);
+  const [error, setError] = useState("");
 
-  function handleEditorMount(editor) {
-    editorRef.current = editor;
-  }
+  useEffect(() => { setCode(starterCode); setOutput(""); setError(""); }, [starterCode]);
 
-  async function runCode() {
+  const execute = async () => {
     setIsRunning(true);
-    setOutput("");
-    setError("");
-    setShowSolution(false);
-
+    setOutput("SYSTEM: Compiling Jutsu...");
     try {
-      const response = await fetch("/api/run", {
+      const res = await fetch("https://emkc.org/api/v2/piston/execute", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          language,
-          code
-        })
+        body: JSON.stringify({ language, version, files: [{ content: code }] })
       });
-
-      const result = await response.json();
-
-      if (result.error) {
-        setError(result.error);
-        return;
+      const data = await res.json();
+      if (data.run.stderr) {
+        setError(data.run.stderr);
+        setOutput("");
+      } else {
+        setOutput(data.run.output);
+        setError("");
       }
-
-      setOutput(result.output);
-
-      if (expectedOutput && result.output.trim() !== expectedOutput.trim()) {
-        setError("Output does not match expected result.");
-      }
-    } catch (err) {
-      setError("Execution service unavailable.");
+    } catch (e) {
+      setError("Execution service timeout.");
     } finally {
       setIsRunning(false);
     }
-  }
+  };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.editor}>
+    <div className="flex flex-col h-full bg-black font-mono">
+      {/* Editor Top Area */}
+      <div className="flex-1 border-b border-white/5">
         <Editor
           height="100%"
           theme="vs-dark"
-          language={language}
+          language={language === "sqlite3" ? "sql" : language}
           value={code}
-          onChange={(value) => setCode(value || "")}
-          onMount={handleEditorMount}
-          options={{
-            fontSize: 14,
-            minimap: { enabled: false },
-            automaticLayout: true
-          }}
+          onChange={(v) => setCode(v)}
+          options={{ fontSize: 14, minimap: { enabled: false }, padding: { top: 20 }, background: "#000000" }}
         />
       </div>
 
-      <div style={styles.controls}>
-        <button onClick={runCode} disabled={isRunning} style={styles.runBtn}>
-          {isRunning ? "Running..." : "Run Code"}
-        </button>
-
-        {error && (
-          <button
-            onClick={() => setShowSolution(true)}
-            style={styles.solutionBtn}
+      {/* Terminal Footer (CMD LOOK) */}
+      <div className="h-[40%] flex flex-col bg-[#050505] p-6">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Console_Output_v1.0</span>
+          <button 
+            onClick={execute} 
+            disabled={isRunning}
+            className="bg-red-600 hover:bg-red-500 text-white px-8 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest shadow-lg shadow-red-900/40 transition-all active:scale-95"
           >
-            Reveal Solution
+            {isRunning ? "Running..." : "Run Code ▶"}
           </button>
-        )}
-      </div>
-
-      <div style={styles.output}>
-        <h4>Output</h4>
-        <pre>{output || "—"}</pre>
-      </div>
-
-      {error && (
-        <div style={styles.error}>
-          <h4>Error</h4>
-          <pre>{error}</pre>
         </div>
-      )}
-
-      {showSolution && (
-        <div style={styles.solution}>
-          <h4>Solution</h4>
-          <pre>{solution}</pre>
+        
+        <div className="flex-1 overflow-y-auto scrollbar-thin rounded-xl bg-black/50 border border-white/5 p-4">
+          {error ? (
+            <pre className="text-red-500 text-xs whitespace-pre-wrap">{error}</pre>
+          ) : (
+            <pre className="text-green-500 text-xs whitespace-pre-wrap">{output || "> Waiting for signal..."}</pre>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
-
-/**
- * Inline styles kept minimal on purpose.
- * We’ll replace with Tailwind / theme system later.
- */
-const styles = {
-  container: {
-    display: "flex",
-    flexDirection: "column",
-    height: "100%",
-    background: "#0f0f0f"
-  },
-  editor: {
-    flex: 1,
-    borderBottom: "1px solid #222"
-  },
-  controls: {
-    display: "flex",
-    gap: "10px",
-    padding: "10px",
-    background: "#111"
-  },
-  runBtn: {
-    background: "#16a34a",
-    color: "#fff",
-    border: "none",
-    padding: "8px 14px",
-    cursor: "pointer"
-  },
-  solutionBtn: {
-    background: "#dc2626",
-    color: "#fff",
-    border: "none",
-    padding: "8px 14px",
-    cursor: "pointer"
-  },
-  output: {
-    padding: "10px",
-    color: "#22c55e",
-    background: "#000"
-  },
-  error: {
-    padding: "10px",
-    color: "#ef4444",
-    background: "#000"
-  },
-  solution: {
-    padding: "10px",
-    background: "#020617",
-    color: "#38bdf8"
-  }
-};
 
