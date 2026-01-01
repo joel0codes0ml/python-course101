@@ -1,7 +1,6 @@
 // src/context/UserContext.jsx
-
 import { createContext, useContext, useEffect, useState } from "react";
-import { auth, db } from "../firebase";
+import { auth, db } from "../firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
@@ -66,6 +65,7 @@ export const UserProvider = ({ children }) => {
     </UserContext.Provider>
   );
 };
+
 
 
 
