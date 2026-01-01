@@ -14,42 +14,52 @@ export default function Login({ onLogin }) {
   const [username, setUsername] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [isTypingPassword, setIsTypingPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // NEW: To handle slow connections
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isLoading) return; // Prevent double clicks
+    if (isLoading) return; 
     
     setError("");
     setIsLoading(true);
 
     try {
       if (isRegistering) {
-        // 1. Create User
+        // 1. Create Auth Account (Fastest part)
         const user = await signUpWithEmail(email, password, username);
-        
-        // 2. FORCE AWAIT Database entry
         const profileData = { username, email, xp: 0 };
-        await createUserProfile(user.uid, profileData);
         
-        // 3. Move to App
+        // 2. IMMEDIATE REDIRECT: Move user to the site now
         onLogin({ uid: user.uid, ...profileData });
+
+        // 3. BACKGROUND SYNC: Save to Firestore without 'await'
+        // This prevents the user from hanging if the DB is slow
+        createUserProfile(user.uid, profileData).catch(err => {
+          console.error("Delayed Profile Sync:", err);
+        });
+
       } else {
         // LOGIN PATH
         const user = await loginWithEmail(email, password);
-        const profile = await getUserProfile(user.uid);
-        onLogin({ uid: user.uid, ...profile });
+        
+        // Fetch profile but provide a fallback so it doesn't hang
+        try {
+          const profile = await getUserProfile(user.uid);
+          onLogin({ uid: user.uid, ...profile });
+        } catch (dbErr) {
+          // If DB is slow/fails, still let them in with basic info
+          onLogin({ uid: user.uid, username: "User", xp: 0 });
+        }
       }
     } catch (err) {
       console.error(err);
+      setIsLoading(false); // Only stop loading if we actually fail
       if (err.message.includes("unavailable")) {
-        setError("LAB_CONNECTION_ERROR: Retrying...");
+        setError("LAB_CONNECTION_ERROR: Check your internet.");
       } else {
         setError(err.message.replace("Firebase: ", "").replace("auth/", ""));
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -104,21 +114,37 @@ export default function Login({ onLogin }) {
 
         <form onSubmit={handleSubmit}>
           {isRegistering && (
-            <input placeholder="USERNAME" style={ui.input} onChange={e => setUsername(e.target.value)} disabled={isLoading} />
+            <input 
+              placeholder="USERNAME" 
+              style={ui.input} 
+              onChange={e => setUsername(e.target.value)} 
+              disabled={isLoading} 
+              required
+            />
           )}
-          <input type="email" placeholder="EMAIL ADDRESS" style={ui.input} onChange={e => setEmail(e.target.value)} disabled={isLoading} />
           <input 
-            type="password" placeholder="PASSWORD" style={ui.input} 
+            type="email" 
+            placeholder="EMAIL ADDRESS" 
+            style={ui.input} 
+            onChange={e => setEmail(e.target.value)} 
+            disabled={isLoading} 
+            required
+          />
+          <input 
+            type="password" 
+            placeholder="PASSWORD" 
+            style={ui.input} 
             onFocus={() => setIsTypingPassword(true)}
             onBlur={() => setIsTypingPassword(false)}
             onChange={e => setPassword(e.target.value)} 
             disabled={isLoading}
+            required
           />
 
-          {error && <p style={{ color: '#ef4444', fontSize: '10px', marginBottom: '10px' }}>{error}</p>}
+          {error && <p style={{ color: '#ef4444', fontSize: '11px', marginBottom: '10px', fontWeight: 'bold' }}>{error}</p>}
 
           <button type="submit" style={{...ui.primaryBtn, opacity: isLoading ? 0.5 : 1}} disabled={isLoading}>
-            {isLoading ? "ESTABLISHING_LINK..." : (isRegistering ? "INITIALIZE ACCOUNT" : "LOGIN TO LAB")}
+            {isLoading ? "SYNCING_BIOMETRICS..." : (isRegistering ? "CREATE ACCOUNT" : "ENTER LAB")}
           </button>
 
           {!isLoading && (
@@ -126,8 +152,11 @@ export default function Login({ onLogin }) {
               <div style={{ margin: '20px 0', fontSize: '10px', color: '#475569', fontWeight: 'bold' }}>OR</div>
               <button type="button" onClick={loginWithApple} style={ui.socialBtn(true)}>Sign in with Apple</button>
               <button type="button" style={ui.socialBtn(false)}>Sign in with Google</button>
-              <p onClick={() => setIsRegistering(!isRegistering)} style={{ marginTop: '25px', fontSize: '10px', color: '#64748b', cursor: 'pointer', textDecoration: 'underline' }}>
-                {isRegistering ? "ALREADY A NINJA? LOGIN" : "NEW SUBJECT? REGISTER"}
+              <p 
+                onClick={() => { setIsRegistering(!isRegistering); setError(""); }} 
+                style={{ marginTop: '25px', fontSize: '11px', color: '#64748b', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                {isRegistering ? "BACK TO LOGIN" : "NEW SUBJECT? REGISTER"}
               </p>
             </>
           )}
