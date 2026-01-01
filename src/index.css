@@ -1,58 +1,35 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Fira+Code:wght@400;500&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  --zenin-black: #020617;
+  --zenin-card: #0b0f1a;
+  --zenin-green: #22c55e;
+  --zenin-red: #ef4444;
 }
 
 body {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-  background-color: #020617; /* Deepest Navy/Black */
+  background-color: var(--zenin-black);
   color: #f1f5f9;
-  -webkit-font-smoothing: antialiased;
-  overflow: hidden; /* Prevents the whole page from scrolling */
+  font-family: 'Inter', sans-serif;
+  overflow: hidden; /* This locks the page so the panels can scroll independently */
 }
 
-/* Custom Scrollbar for the Lesson and Terminal Panels */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+/* Custom "Hacker" Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--zenin-red); }
+
+/* Placeholder Card Style for Lessons */
+.lesson-card {
+  background: linear-gradient(145deg, #0b0f1a 0%, #050810 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #1e293b; /* Slate-800 */
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #ef4444; /* Zenin Red on hover */
-}
-
-/* Animations for panel switching */
-.animate-in {
-  animation: panelSlide 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes panelSlide {
-  from { opacity: 0; transform: translateX(-10px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-/* Typography for the Lesson Content */
-.prose p {
-  margin-bottom: 1.5rem;
-  line-height: 1.7;
-}
-
-/* Monaco Editor Background Override */
-.monaco-editor, .monaco-editor-background, .monaco-editor .inputarea.ime-input {
-  background-color: #000000 !important;
+.terminal-header {
+  background: #000000;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
