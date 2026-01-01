@@ -1,8 +1,8 @@
 // src/context/UserContext.jsx
+// src/context/UserContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
-import { auth, db } from "../firebase.js";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { auth, db, onAuthChange } from "../firebase.js"; // <--- use our wrapper
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore"; // Firestore only
 
 const UserContext = createContext();
 export const useUser = () => useContext(UserContext);
@@ -12,7 +12,7 @@ export const UserProvider = ({ children }) => {
   const [progress, setProgress] = useState({});
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+  const unsubscribe = onAuthChange(async (u) => {
       if (!u) return setUser(null);
 
       const ref = doc(db, "users", u.uid);
