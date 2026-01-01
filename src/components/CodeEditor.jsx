@@ -19,24 +19,23 @@ const execute = async () => {
       const runError = data.run.stderr || (data.compile && data.compile.stderr);
 
       if (runError) {
-        setError(runError);
+        setError(runError); // Catch syntax errors like print(Hello)
         setOutput("");
       } else {
-        setOutput(runOutput);
-        
-        // VALIDATION LOGIC
-        // Normalize strings (remove extra spaces/newlines) to compare
+        // Compare output to mission goal
         const cleanOutput = runOutput.trim();
-        const cleanExpected = expectedOutput.trim();
+        const cleanExpected = expectedOutput ? expectedOutput.trim() : null;
 
-        if (expectedOutput && cleanOutput !== cleanExpected) {
-          setError(`FAIL: Output "${cleanOutput}" does not match mission goal.`);
-        } else if (expectedOutput) {
+        if (cleanExpected && cleanOutput !== cleanExpected) {
+          setOutput(runOutput); // Show what they got
+          setError(`FAIL: Output does not match mission goal.`);
+        } else {
           setOutput(`SUCCESS! \n\n${runOutput}`);
+          setError("");
         }
       }
     } catch (e) {
-      setError("System Error: Lab engine offline.");
+      setError("System Error: Connection failed.");
     } finally {
       setIsRunning(false);
     }
