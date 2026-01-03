@@ -53,7 +53,10 @@ export default function App() {
   const current = lessons[currentLessonIndex] || { title: "End of Path", content: "Select a lesson to begin." };
 
   return (
-    <PayPalScriptProvider options={{ "client-id": "YOUR_PAYPAL_CLIENT_ID" }}>
+    <PayPalScriptProvider options={{ 
+      "client-id": "AdCbJRCE9syXhIQUg7dpVLTFtiqlqhXIrLDx3F_ynEV2uEi4Zj9yMjTj_xln6WqafD2WkPiPMqsFs7j5", 
+      currency: "USD" 
+    }}>
       <div style={styles.appContainer}>
         
         {/* HEADER */}
@@ -62,21 +65,25 @@ export default function App() {
             <Mascot />
             <span style={styles.logo}>ZENIN<span style={{ color: '#ef4444' }}>LABS</span></span>
             
-            {/* TOP LEFT PAYMENT SECTION */}
-            <div style={{ marginLeft: '24px', display: 'flex', alignItems: 'center' }}>
-              {!user?.isPro ? (
-                <button onClick={() => setIsPaypalOpen(true)} style={styles.upgradeBtn}>
-                  ✨ GET PRO
-                </button>
-              ) : (
-                <span style={styles.proBadge}>👑 PRO MEMBER</span>
-              )}
-            </div>
+            {/* TOP LEFT UPGRADE BUTTON */}
+            {!user?.isPro && (
+              <button 
+                onClick={() => setIsPaypalOpen(true)} 
+                style={styles.upgradeBtn}
+              >
+                ⚡ GET PRO
+              </button>
+            )}
+            {user?.isPro && (
+              <span style={styles.proBadge}>👑 PRO MEMBER</span>
+            )}
           </div>
 
           <div style={styles.navRight}>
               {!user?.isPro && (
-                <span style={styles.runsText}>{8 - (user?.dailyExecutions || 0)}/8 RUNS LEFT</span>
+                <span style={styles.runsText}>
+                  {8 - (user?.dailyExecutions || 0)}/8 RUNS LEFT
+                </span>
               )}
               <span style={styles.userBadge}>
                 {user?.username || 'NINJA'} | XP {user?.xp || 0}
@@ -84,8 +91,9 @@ export default function App() {
           </div>
         </nav>
 
-        {/* MAIN LAYOUT */}
+        {/* MAIN BODY */}
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* SIDEBAR */}
           <aside style={styles.sidebar}>
             <div style={styles.curriculumHeader}>CURRICULUM</div>
             {languages.map(lang => (
@@ -99,15 +107,14 @@ export default function App() {
             ))}
           </aside>
 
+          {/* LESSON & EDITOR */}
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <main style={styles.lessonContainer}>
               <div style={styles.moduleTag}>MODULE {currentLessonIndex + 1}</div>
               <h1 style={styles.lessonTitle}>{current.title}</h1>
-              
               <div style={styles.contentBox}>
                 <p style={styles.contentText}>{current.content}</p>
               </div>
-
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button onClick={() => setCurrentLessonIndex(p => Math.max(0, p-1))} style={styles.btnPrev}>PREVIOUS</button>
                 <button onClick={() => setCurrentLessonIndex(p => Math.min(lessons.length-1, p+1))} style={styles.btnNext}>NEXT LESSON</button>
@@ -126,50 +133,46 @@ export default function App() {
           </div>
         </div>
 
-        {/* PAYPAL MODAL */}
+        {/* PAYPAL CHECKOUT MODAL */}
         {isPaypalOpen && (
-          <PayPalModal 
-            user={user} 
-            setUser={setUser} 
-            onClose={() => setIsPaypalOpen(false)} 
-          />
+          <div style={styles.modalOverlay}>
+            <div style={styles.modalCard}>
+              <div style={{ marginBottom: '20px' }}>
+                <h2 style={{ color: '#fff', margin: '0 0 10px 0' }}>Go Pro</h2>
+                <p style={{ color: '#94a3b8', fontSize: '14px', margin: 0 }}>Unlimited access to all coding paths.</p>
+              </div>
+
+              <div style={{ minHeight: '150px' }}>
+                <PayPalButtons 
+                  style={{ layout: "vertical", shape: "rect", color: "gold" }}
+                  createOrder={(data, actions) => {
+                    return actions.order.create({
+                      purchase_units: [{
+                        description: "ZeninLabs Pro Monthly",
+                        amount: { value: "2.50" }
+                      }]
+                    });
+                  }}
+                  onApprove={async (data, actions) => {
+                    const details = await actions.order.capture();
+                    // Update Firebase
+                    await updateUserProfile(user.uid, { isPro: true, paymentId: details.id });
+                    // Update Local State
+                    setUser(prev => ({ ...prev, isPro: true }));
+                    setIsPaypalOpen(false);
+                    alert("Welcome to the elite, Ninja! You are now PRO.");
+                  }}
+                />
+              </div>
+
+              <button onClick={() => setIsPaypalOpen(false)} style={styles.modalClose}>
+                Maybe later
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </PayPalScriptProvider>
-  );
-}
-
-// SUB-COMPONENT: PAYPAL MODAL
-function PayPalModal({ user, setUser, onClose }) {
-  const [plan, setPlan] = useState("monthly");
-  const price = plan === "monthly" ? "2.50" : "20.00";
-
-  return (
-    <div style={styles.modalOverlay}>
-      <div style={styles.modalCard}>
-        <h2 style={{ color: '#fff', marginBottom: '8px' }}>Zenin Pro</h2>
-        <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '24px' }}>Unlimited executions and full curriculum access.</p>
-        
-        <div style={styles.toggleGroup}>
-          <button onClick={() => setPlan("monthly")} style={plan === "monthly" ? styles.toggleActive : styles.toggleInactive}>Monthly ($2.50)</button>
-          <button onClick={() => setPlan("yearly")} style={plan === "yearly" ? styles.toggleActive : styles.toggleInactive}>Yearly ($20)</button>
-        </div>
-
-        <div style={{ marginTop: '20px' }}>
-          <PayPalButtons 
-            style={{ layout: "vertical", shape: "rect" }}
-            createOrder={(data, actions) => actions.order.create({ purchase_units: [{ amount: { value: price } }] })}
-            onApprove={async (data, actions) => {
-              const details = await actions.order.capture();
-              await updateUserProfile(user.uid, { isPro: true, paypalId: details.id });
-              setUser(prev => ({ ...prev, isPro: true }));
-              onClose();
-            }}
-          />
-        </div>
-        <button onClick={onClose} style={styles.modalClose}>Maybe later</button>
-      </div>
-    </div>
   );
 }
 
@@ -177,8 +180,8 @@ const styles = {
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#020617', color: '#fff', overflow: 'hidden', fontFamily: 'sans-serif' },
   nav: { height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', backgroundColor: '#000', borderBottom: '1px solid #1e293b', flexShrink: 0 },
   logo: { marginLeft: '12px', fontWeight: '900', fontStyle: 'italic', fontSize: '20px', letterSpacing: '-1px' },
-  upgradeBtn: { backgroundColor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' },
-  proBadge: { color: '#f59e0b', fontSize: '11px', fontWeight: '900', letterSpacing: '1px' },
+  upgradeBtn: { marginLeft: '24px', backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '6px 16px', borderRadius: '4px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', boxShadow: '0 0 15px rgba(239, 68, 68, 0.3)' },
+  proBadge: { marginLeft: '24px', color: '#22c55e', fontSize: '10px', fontWeight: '900', border: '1px solid #22c55e', padding: '4px 10px', borderRadius: '4px' },
   navRight: { display: 'flex', gap: '20px', alignItems: 'center' },
   runsText: { color: '#475569', fontSize: '11px', fontWeight: 'bold' },
   userBadge: { color: '#22c55e', fontSize: '12px', fontWeight: 'bold', background: 'rgba(34, 197, 94, 0.1)', padding: '4px 12px', borderRadius: '20px' },
@@ -193,10 +196,7 @@ const styles = {
   btnPrev: { flex: 1, padding: '14px', borderRadius: '8px', backgroundColor: '#1e293b', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer' },
   btnNext: { flex: 1, padding: '14px', borderRadius: '8px', backgroundColor: '#22c55e', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer' },
   loading: { height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020617', color: '#ef4444', fontFamily: 'monospace' },
-  modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modalCard: { background: '#020617', border: '1px solid #1e293b', padding: '32px', borderRadius: '20px', width: '360px', textAlign: 'center' },
-  toggleGroup: { display: 'flex', background: '#000', padding: '4px', borderRadius: '10px', border: '1px solid #1e293b' },
-  toggleActive: { flex: 1, background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', fontWeight: 'bold', cursor: 'pointer' },
-  toggleInactive: { flex: 1, background: 'transparent', color: '#64748b', border: 'none', padding: '10px', cursor: 'pointer' },
-  modalClose: { background: 'none', border: 'none', color: '#475569', marginTop: '20px', cursor: 'pointer', fontSize: '12px' }
+  modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
+  modalCard: { background: '#020617', border: '1px solid #1e293b', padding: '40px', borderRadius: '24px', width: '360px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' },
+  modalClose: { background: 'none', border: 'none', color: '#475569', marginTop: '24px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }
 };
