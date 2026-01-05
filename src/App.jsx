@@ -55,7 +55,9 @@ export default function App() {
   return (
     <PayPalScriptProvider options={{ 
       "client-id": "AdCbJRCE9syXhIQUg7dpVLTFtiqlqhXIrLDx3F_ynEV2uEi4Zj9yMjTj_xln6WqafD2WkPiPMqsFs7j5", 
-      currency: "USD" 
+      currency: "USD",
+      intent: "capture",
+      components: "buttons" // Forces buttons to initialize
     }}>
       <div style={styles.appContainer}>
         
@@ -65,16 +67,15 @@ export default function App() {
             <Mascot />
             <span style={styles.logo}>ZENIN<span style={{ color: '#ef4444' }}>LABS</span></span>
             
-            {/* TOP LEFT UPGRADE BUTTON */}
-            {!user?.isPro && (
+            {/* GO PRO PLACEHOLDER - RIGHT NEXT TO LOGO */}
+            {!user?.isPro ? (
               <button 
                 onClick={() => setIsPaypalOpen(true)} 
                 style={styles.upgradeBtn}
               >
-                ⚡ GET PRO
+                ⚡ GO PRO
               </button>
-            )}
-            {user?.isPro && (
+            ) : (
               <span style={styles.proBadge}>👑 PRO MEMBER</span>
             )}
           </div>
@@ -86,14 +87,13 @@ export default function App() {
                 </span>
               )}
               <span style={styles.userBadge}>
-                {user?.username || 'NINJA'} | XP {user?.xp || 0}
+                {user?.username?.toUpperCase() || 'NINJA'} | XP {user?.xp || 0}
               </span>
           </div>
         </nav>
 
         {/* MAIN BODY */}
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          {/* SIDEBAR */}
           <aside style={styles.sidebar}>
             <div style={styles.curriculumHeader}>CURRICULUM</div>
             {languages.map(lang => (
@@ -107,7 +107,6 @@ export default function App() {
             ))}
           </aside>
 
-          {/* LESSON & EDITOR */}
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <main style={styles.lessonContainer}>
               <div style={styles.moduleTag}>MODULE {currentLessonIndex + 1}</div>
@@ -133,13 +132,13 @@ export default function App() {
           </div>
         </div>
 
-        {/* PAYPAL CHECKOUT MODAL */}
+        {/* PAYPAL MODAL */}
         {isPaypalOpen && (
           <div style={styles.modalOverlay}>
             <div style={styles.modalCard}>
-              <div style={{ marginBottom: '20px' }}>
-                <h2 style={{ color: '#fff', margin: '0 0 10px 0' }}>Go Pro</h2>
-                <p style={{ color: '#94a3b8', fontSize: '14px', margin: 0 }}>Unlimited access to all coding paths.</p>
+              <div style={{ marginBottom: '24px' }}>
+                <h2 style={{ color: '#fff', margin: '0 0 10px 0' }}>Unlock Zenin Pro</h2>
+                <p style={{ color: '#94a3b8', fontSize: '14px', margin: 0 }}>Get unlimited code executions and all premium paths.</p>
               </div>
 
               <div style={{ minHeight: '150px' }}>
@@ -148,26 +147,22 @@ export default function App() {
                   createOrder={(data, actions) => {
                     return actions.order.create({
                       purchase_units: [{
-                        description: "ZeninLabs Pro Monthly",
+                        description: "ZeninLabs Pro Membership",
                         amount: { value: "2.50" }
                       }]
                     });
                   }}
                   onApprove={async (data, actions) => {
                     const details = await actions.order.capture();
-                    // Update Firebase
                     await updateUserProfile(user.uid, { isPro: true, paymentId: details.id });
-                    // Update Local State
                     setUser(prev => ({ ...prev, isPro: true }));
                     setIsPaypalOpen(false);
-                    alert("Welcome to the elite, Ninja! You are now PRO.");
+                    alert("Welcome to Zenin Pro, Ninja!");
                   }}
                 />
               </div>
 
-              <button onClick={() => setIsPaypalOpen(false)} style={styles.modalClose}>
-                Maybe later
-              </button>
+              <button onClick={() => setIsPaypalOpen(false)} style={styles.modalClose}>MAYBE LATER</button>
             </div>
           </div>
         )}
@@ -177,12 +172,12 @@ export default function App() {
 }
 
 const styles = {
-  appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#020617', color: '#fff', overflow: 'hidden', fontFamily: 'sans-serif' },
+  appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#020617', color: '#fff', overflow: 'hidden', margin: 0, padding: 0, fontFamily: 'sans-serif' },
   nav: { height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', backgroundColor: '#000', borderBottom: '1px solid #1e293b', flexShrink: 0 },
   logo: { marginLeft: '12px', fontWeight: '900', fontStyle: 'italic', fontSize: '20px', letterSpacing: '-1px' },
-  upgradeBtn: { marginLeft: '24px', backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '6px 16px', borderRadius: '4px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', boxShadow: '0 0 15px rgba(239, 68, 68, 0.3)' },
-  proBadge: { marginLeft: '24px', color: '#22c55e', fontSize: '10px', fontWeight: '900', border: '1px solid #22c55e', padding: '4px 10px', borderRadius: '4px' },
-  navRight: { display: 'flex', gap: '20px', alignItems: 'center' },
+  upgradeBtn: { marginLeft: '20px', backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '5px 12px', borderRadius: '4px', fontSize: '10px', fontWeight: '900', cursor: 'pointer', boxShadow: '0 0 15px rgba(245, 158, 11, 0.2)' },
+  proBadge: { marginLeft: '20px', color: '#22c55e', fontSize: '10px', fontWeight: '900', border: '1px solid #22c55e', padding: '4px 10px', borderRadius: '4px' },
+  navRight: { display: 'flex', alignItems: 'center', gap: '20px' },
   runsText: { color: '#475569', fontSize: '11px', fontWeight: 'bold' },
   userBadge: { color: '#22c55e', fontSize: '12px', fontWeight: 'bold', background: 'rgba(34, 197, 94, 0.1)', padding: '4px 12px', borderRadius: '20px' },
   sidebar: { width: '220px', backgroundColor: '#000', borderRight: '1px solid #1e293b', overflowY: 'auto' },
@@ -196,7 +191,7 @@ const styles = {
   btnPrev: { flex: 1, padding: '14px', borderRadius: '8px', backgroundColor: '#1e293b', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer' },
   btnNext: { flex: 1, padding: '14px', borderRadius: '8px', backgroundColor: '#22c55e', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer' },
   loading: { height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020617', color: '#ef4444', fontFamily: 'monospace' },
-  modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
-  modalCard: { background: '#020617', border: '1px solid #1e293b', padding: '40px', borderRadius: '24px', width: '360px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' },
-  modalClose: { background: 'none', border: 'none', color: '#475569', marginTop: '24px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }
+  modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 },
+  modalCard: { background: '#020617', border: '1px solid #1e293b', padding: '32px', borderRadius: '20px', width: '340px', textAlign: 'center' },
+  modalClose: { background: 'none', border: 'none', color: '#475569', marginTop: '20px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }
 };
