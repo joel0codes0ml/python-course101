@@ -57,7 +57,7 @@ export default function App() {
       "client-id": "AdCbJRCE9syXhIQUg7dpVLTFtiqlqhXIrLDx3F_ynEV2uEi4Zj9yMjTj_xln6WqafD2WkPiPMqsFs7j5", 
       currency: "USD",
       intent: "capture",
-      components: "buttons" // Forces buttons to initialize
+      components: "buttons"
     }}>
       <div style={styles.appContainer}>
         
@@ -67,7 +67,7 @@ export default function App() {
             <Mascot />
             <span style={styles.logo}>ZENIN<span style={{ color: '#ef4444' }}>LABS</span></span>
             
-            {/* GO PRO PLACEHOLDER - RIGHT NEXT TO LOGO */}
+            {/* GO PRO BUTTON */}
             {!user?.isPro ? (
               <button 
                 onClick={() => setIsPaypalOpen(true)} 
@@ -144,11 +144,16 @@ export default function App() {
               <div style={{ minHeight: '150px' }}>
                 <PayPalButtons 
                   style={{ layout: "vertical", shape: "rect", color: "gold" }}
+                  // 🛠️ FIX: Re-renders the button to ensure a fresh session
+                  forceReRender={[isPaypalOpen]} 
                   createOrder={(data, actions) => {
                     return actions.order.create({
                       purchase_units: [{
                         description: "ZeninLabs Pro Membership",
-                        amount: { value: "2.50" }
+                        amount: { 
+                          currency_code: "USD", // 🛠️ Explicit currency for Live
+                          value: "2.50" 
+                        }
                       }]
                     });
                   }}
@@ -158,6 +163,9 @@ export default function App() {
                     setUser(prev => ({ ...prev, isPro: true }));
                     setIsPaypalOpen(false);
                     alert("Welcome to Zenin Pro, Ninja!");
+                  }}
+                  onError={(err) => {
+                    console.error("PayPal encountered an error:", err);
                   }}
                 />
               </div>
