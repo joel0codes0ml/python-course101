@@ -57,7 +57,10 @@ export default function App() {
       "client-id": "AdCbJRCE9syXhIQUg7dpVLTFtiqlqhXIrLDx3F_ynEV2uEi4Zj9yMjTj_xln6WqafD2WkPiPMqsFs7j5", 
       currency: "USD",
       intent: "capture",
-      components: "buttons"
+      components: "buttons",
+      // ⚡ FORCES THE CARD BUTTON (MASTERCARD/VISA) TO LOAD
+      "enable-funding": "card",
+      "disable-funding": "paylater,venmo"
     }}>
       <div style={styles.appContainer}>
         
@@ -132,26 +135,32 @@ export default function App() {
           </div>
         </div>
 
-        {/* PAYPAL MODAL */}
+        {/* PAYMENT MODAL (SUPPORTS PAYPAL + MASTERCARD/VISA) */}
         {isPaypalOpen && (
           <div style={styles.modalOverlay}>
             <div style={styles.modalCard}>
               <div style={{ marginBottom: '24px' }}>
                 <h2 style={{ color: '#fff', margin: '0 0 10px 0' }}>Unlock Zenin Pro</h2>
-                <p style={{ color: '#94a3b8', fontSize: '14px', margin: 0 }}>Get unlimited code executions and all premium paths.</p>
+                <p style={{ color: '#94a3b8', fontSize: '14px', margin: 0 }}>
+                  Enter Zenin Pro with Mastercard, Visa, or PayPal.
+                </p>
               </div>
 
               <div style={{ minHeight: '150px' }}>
                 <PayPalButtons 
-                  style={{ layout: "vertical", shape: "rect", color: "gold" }}
-                  // 🛠️ FIX: Re-renders the button to ensure a fresh session
+                  style={{ 
+                    layout: "vertical", 
+                    shape: "rect", 
+                    color: "gold",
+                    label: "pay" 
+                  }}
                   forceReRender={[isPaypalOpen]} 
                   createOrder={(data, actions) => {
                     return actions.order.create({
                       purchase_units: [{
                         description: "ZeninLabs Pro Membership",
                         amount: { 
-                          currency_code: "USD", // 🛠️ Explicit currency for Live
+                          currency_code: "USD",
                           value: "2.50" 
                         }
                       }]
@@ -159,13 +168,15 @@ export default function App() {
                   }}
                   onApprove={async (data, actions) => {
                     const details = await actions.order.capture();
+                    // ✅ UPDATES FIREBASE AND UI
                     await updateUserProfile(user.uid, { isPro: true, paymentId: details.id });
                     setUser(prev => ({ ...prev, isPro: true }));
                     setIsPaypalOpen(false);
                     alert("Welcome to Zenin Pro, Ninja!");
                   }}
                   onError={(err) => {
-                    console.error("PayPal encountered an error:", err);
+                    console.error("Payment error:", err);
+                    alert("Payment could not be processed. Please check your card details.");
                   }}
                 />
               </div>
