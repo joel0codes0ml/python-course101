@@ -3,10 +3,9 @@ import Mascot from "./components/Mascot.jsx";
 import CodeEditor from "./components/CodeEditor.jsx";
 import Login from "./Login.jsx";
 import { onAuthChange, getUserProfile, updateUserProfile } from "./firebase";
-// Import PayPal components
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
-// Keep all your course data imports
+// Course data imports
 import { pythonLessons } from "./courses/python.js";
 import { clLessons } from "./courses/clessons.js";
 import { cppLessons } from "./courses/cpplessons.js";
@@ -63,18 +62,14 @@ export default function App() {
   const current = lessons[currentLessonIndex] || { title: "End of Path", content: "Select a lesson to begin." };
 
   return (
-    <PayPalScriptProvider options={{ "client-id": "YOUR_PAYPAL_CLIENT_ID" }}>
+    <PayPalScriptProvider options={{ "client-id": "test", currency: "USD" }}>
     <div style={styles.appContainer}>
-      {/* HEADER */}
       <nav style={styles.nav}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <Mascot />
           <span style={styles.logo}>ZENIN<span style={{ color: '#ef4444' }}>LABS</span></span>
-          
           {!user?.isPro ? (
-            <button onClick={() => setIsPaystackOpen(true)} style={styles.upgradeBtn}>
-              ⚡ GO PRO
-            </button>
+            <button onClick={() => setIsPaystackOpen(true)} style={styles.upgradeBtn}>⚡ GO PRO</button>
           ) : (
             <span style={styles.proBadge}>👑 PRO MEMBER</span>
           )}
@@ -92,7 +87,6 @@ export default function App() {
         </div>
       </nav>
 
-      {/* MAIN BODY */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <aside style={styles.sidebar}>
           <div style={styles.curriculumHeader}>CURRICULUM</div>
@@ -124,6 +118,7 @@ export default function App() {
             <CodeEditor 
               user={user}
               setUser={setUser}
+              setIsPaystackOpen={setIsPaystackOpen}
               language={currentLanguage.id}
               starterCode={current.starterCode}
               expectedOutput={current.expectedOutput}
@@ -132,7 +127,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* MULTI-GATEWAY MODAL */}
       {isPaystackOpen && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
@@ -141,17 +135,14 @@ export default function App() {
               <p style={{ color: '#94a3b8', fontSize: '13px' }}>Select your preferred payment method.</p>
             </div>
 
-            {/* PAYSTACK SECTION */}
             <div style={styles.paymentMethodBox}>
                 <span style={styles.methodLabel}>KENYA (M-PESA / CARD)</span>
-                <a 
-                  href="https://paystack.shop/pay/zdrj1fu6qq" 
-                  target="_blank" 
-                  rel="noreferrer"
+                <button 
+                  onClick={() => window.open("https://paystack.shop/pay/zdrj1fu6qq", "_blank")}
                   style={styles.paystackLink}
                 >
                   PAY KES 500
-                </a>
+                </button>
                 <button onClick={handleActivatePro} style={styles.verifyBtn}>
                   I HAVE PAID VIA M-PESA
                 </button>
@@ -159,7 +150,6 @@ export default function App() {
 
             <div style={{ margin: '15px 0', color: '#475569', fontSize: '10px', fontWeight: 'bold' }}>OR</div>
 
-            {/* PAYPAL SECTION */}
             <div style={styles.paymentMethodBoxPayPal}>
                 <span style={{...styles.methodLabel, color: '#003087'}}>GLOBAL (PAYPAL / CARD)</span>
                 <PayPalButtons 
@@ -169,7 +159,10 @@ export default function App() {
                       purchase_units: [{ amount: { value: "4.00" } }]
                     });
                   }}
-                  onApprove={handleActivatePro}
+                  onApprove={async (data, actions) => {
+                    await actions.order.capture();
+                    handleActivatePro();
+                  }}
                 />
             </div>
 
@@ -208,6 +201,6 @@ const styles = {
   paymentMethodBox: { padding: '15px', border: '1px solid #22c55e', borderRadius: '12px', background: 'rgba(34, 197, 94, 0.05)', textAlign: 'left' },
   paymentMethodBoxPayPal: { padding: '15px', border: '1px solid #cbd5e1', borderRadius: '12px', background: '#fff', textAlign: 'left' },
   methodLabel: { fontSize: '9px', fontWeight: '900', color: '#22c55e', display: 'block', marginBottom: '10px' },
-  paystackLink: { display: 'block', backgroundColor: '#22c55e', color: '#000', padding: '12px', borderRadius: '8px', fontWeight: 'bold', textDecoration: 'none', textAlign: 'center', marginBottom: '5px' },
+  paystackLink: { width: '100%', display: 'block', border: 'none', backgroundColor: '#22c55e', color: '#000', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center', marginBottom: '5px' },
   verifyBtn: { width: '100%', backgroundColor: 'transparent', color: '#22c55e', border: 'none', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold' }
 };
