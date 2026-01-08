@@ -14,30 +14,20 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
     setError("");
   }, [starterCode, language]);
 
-  // THE SYNTAX ENGINE: Colors based on Coddy's actual Go lesson
+  // HIGH-PRECISION REGEX: Only wraps the text, doesn't leak into the editor
   const highlightCode = (input) => {
     if (!input) return "";
+    // Step 1: Escape HTML entities to prevent rendering bugs
     let text = input.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+    // Step 2: Apply Coddy.tech Colors
     return text
-      // Blue: Keywords (package, import, func, return, etc.)
       .replace(/\b(package|import|func|var|return|if|else|for|range|go|type|struct|chan)\b/g, '<span style="color: #569cd6;">$1</span>')
-      // Yellow: Functions (any word before a parenthesis like Println)
-      .replace(/\b([a-zA-Z_]\w*)(?=\s*\()/g, '<span style="color: #dcdcaa;">$1</span>')
-      // Orange/Peach: Strings "Hello World"
-      .replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, '<span style="color: #ce9178;">$&</span>')
-      // Light Green: Numbers
-      .replace(/\b(\d+)\b/g, '<span style="color: #b5cea8;">$1</span>')
-      // Golden: Braces and Parentheses () {}
-      .replace(/[(){}[\]]/g, '<span style="color: #ffd700;">$&</span>')
-      // Grey-Green: Comments
+      .replace(/\b([a-zA-Z_]\w*)(?=\s*\()/g, '<span style="color: #dcdcaa;">$1</span>') // Yellow Functions
+      .replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, '<span style="color: #ce9178;">$&</span>') // Orange Strings
+      .replace(/\b(\d+)\b/g, '<span style="color: #b5cea8;">$1</span>') // Numbers
+      .replace(/[(){}[\]]/g, '<span style="color: #ffd700;">$&</span>') // Gold Brackets
       .replace(/\/\/.*$/gm, '<span style="color: #6a9955; font-style: italic;">$&</span>');
-  };
-
-  const playSuccessSound = () => {
-    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3');
-    audio.volume = 0.5;
-    audio.play().catch(e => console.log("Audio play blocked"));
   };
 
   const syncScroll = (e) => {
@@ -53,7 +43,6 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
       setIsPaystackOpen(true);
       return;
     }
-
     setIsRunning(true);
     setOutput("SYSTEM: Executing...");
     setError("");
@@ -68,22 +57,14 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
           files: [{ content: code }] 
         }),
       });
-
       const data = await response.json();
       const result = data.run.output || "";
-      let xpBonus = 0;
-      let isSuccess = false;
-
-      if (expectedOutput && result.trim() === expectedOutput.trim()) {
-        xpBonus = 20;
-        isSuccess = true;
-        playSuccessSound();
-      }
+      let isSuccess = expectedOutput && result.trim() === expectedOutput.trim();
 
       setUser(prev => {
-        const nextXp = (prev.xp || 0) + xpBonus;
+        const nextXp = (prev.xp || 0) + (isSuccess ? 20 : 0);
         const nextRuns = (prev.dailyExecutions || 0) + 1;
-        updateUserProfile(prev.uid, { xp: nextXp, dailyExecutions: nextRuns }).catch(e => {});
+        updateUserProfile(prev.uid, { xp: nextXp, dailyExecutions: nextRuns }).catch(() => {});
         return { ...prev, xp: nextXp, dailyExecutions: nextRuns };
       });
 
@@ -93,29 +74,25 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
         setOutput(isSuccess ? `${result}\n\n✨ SUCCESS! +20 XP` : result);
       }
     } catch (err) {
-      setError("Execution failed. Check internet.");
-    } finally {
-      setIsRunning(false);
-    }
+      setError("Execution failed.");
+    } finally { setIsRunning(false); }
   };
 
   return (
     <div style={ui.container}>
       <div style={ui.header}>
         <span>{language.toUpperCase()} ENGINE</span>
-        <span style={{color: isRunning ? '#f59e0b' : '#22c55e', fontSize: '9px'}}>
-            {isRunning ? "● PROCESSING" : "● READY"}
-        </span>
       </div>
 
       <div style={ui.editorArea}>
-        {/* HIGHLIGHTING LAYER */}
-        <pre 
+        {/* BACKGROUND: THE HIGHLIGHTED CODE */}
+        <div 
           ref={preRef}
           style={ui.highlighter} 
           dangerouslySetInnerHTML={{ __html: highlightCode(code) + "\n" }} 
         />
-        {/* INTERACTIVE LAYER */}
+        
+        {/* FOREGROUND: THE ACTUAL INVISIBLE TEXTAREA */}
         <textarea 
           value={code} 
           onChange={(e) => setCode(e.target.value)} 
@@ -124,15 +101,15 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
           spellCheck="false" 
           autoCapitalize="none"
         />
+        
         <button onClick={execute} disabled={isRunning} style={ui.runBtn}>
-          {isRunning ? "..." : "RUN CODE"}
+          {isRunning ? "..." : "RUN"}
         </button>
       </div>
 
       <div style={ui.outputBox}>
-        <div style={{fontSize: '9px', color: '#475569', marginBottom: '8px', fontWeight: 'bold'}}>TERMINAL</div>
         <pre style={{ color: error ? '#ef4444' : '#22c55e', margin: 0, whiteSpace: 'pre-wrap' }}>
-          {error || output || "Awaiting execution..."}
+          {error || output || "Terminal Ready"}
         </pre>
       </div>
     </div>
@@ -141,25 +118,29 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
 
 const ui = {
   container: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#1e1e1e' },
-  header: { display: 'flex', justifyContent: 'space-between', padding: '12px 20px', backgroundColor: '#252526', color: '#858585', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid #1e1e1e' },
+  header: { padding: '10px 20px', backgroundColor: '#252526', color: '#858585', fontSize: '11px', borderBottom: '1px solid #111' },
   editorArea: { flex: 1, position: 'relative', overflow: 'hidden' },
+  
+  // Highlighting layer - Must match textarea EXACTLY
   highlighter: { 
     position: 'absolute', inset: 0, padding: '25px', margin: 0,
     color: '#d4d4d4', fontFamily: '"Fira Code", monospace', fontSize: '14px', 
-    whiteSpace: 'pre-wrap', pointerEvents: 'none', lineHeight: '1.6', zIndex: 0 
+    whiteSpace: 'pre-wrap', wordBreak: 'break-all', pointerEvents: 'none', 
+    lineHeight: '1.6', zIndex: 0, overflow: 'hidden'
   },
+  
+  // User input layer - Transparent text, white cursor
   textarea: { 
-    width: '100%', height: '100%', backgroundColor: 'transparent', color: 'transparent', 
+    width: '100%', height: '100%', backgroundColor: 'transparent', 
+    color: 'transparent', // This hides the raw text so you don't see double
     padding: '25px', border: 'none', fontFamily: '"Fira Code", monospace', 
     outline: 'none', fontSize: '14px', resize: 'none', lineHeight: '1.6', 
-    caretColor: '#fff', position: 'relative', zIndex: 1 
+    caretColor: '#fff', // Keeps the flashing cursor visible
+    position: 'relative', zIndex: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-all'
   },
-  runBtn: { 
-    position: 'absolute', bottom: '20px', right: '20px', backgroundColor: '#22c55e', 
-    color: '#000', border: 'none', padding: '10px 30px', borderRadius: '4px', 
-    fontWeight: '900', cursor: 'pointer', zIndex: 5 
-  },
-  outputBox: { height: '180px', backgroundColor: '#000', padding: '20px', overflowY: 'auto', borderTop: '1px solid #333', fontFamily: 'monospace', fontSize: '13px' }
+  
+  runBtn: { position: 'absolute', bottom: '20px', right: '20px', backgroundColor: '#22c55e', color: '#000', border: 'none', padding: '10px 30px', borderRadius: '4px', fontWeight: '900', cursor: 'pointer', zIndex: 5 },
+  outputBox: { height: '150px', backgroundColor: '#000', padding: '20px', overflowY: 'auto', borderTop: '1px solid #333' }
 };
 
 export default CodeEditor;
