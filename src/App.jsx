@@ -5,7 +5,7 @@ import Login from "./Login.jsx";
 import { onAuthChange, getUserProfile, updateUserProfile, logout } from "./firebase";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
-// Course data imports
+// Course data imports (Ensure these paths are correct)
 import { pythonLessons } from "./courses/python.js";
 import { clLessons } from "./courses/clessons.js";
 import { cppLessons } from "./courses/cpplessons.js";
@@ -36,13 +36,22 @@ export default function App() {
   const RUN_LIMIT = 12; 
 
   useEffect(() => {
+    // This is the "Brain" of the persistence fix
     const unsubscribe = onAuthChange(async (firebaseUser) => {
       if (firebaseUser) {
-        const profile = await getUserProfile(firebaseUser.uid);
-        setUser({ uid: firebaseUser.uid, ...profile });
+        try {
+          // If a user is found in browser cache, fetch their lab profile
+          const profile = await getUserProfile(firebaseUser.uid);
+          setUser({ uid: firebaseUser.uid, ...profile });
+        } catch (err) {
+          console.error("Profile recovery failed:", err);
+          // Fallback if DB is slow so they aren't locked out
+          setUser({ uid: firebaseUser.uid, username: "NINJA", xp: 0 });
+        }
       } else {
         setUser(null);
       }
+      // ONLY stop the loading screen once we know the auth status
       setInitializing(false);
     });
     return () => unsubscribe();
@@ -57,8 +66,8 @@ export default function App() {
 
   if (initializing) return (
     <div style={styles.loading}>
-      <div className="sh-logo">🌀</div>
-      <h2 style={{marginTop: '20px'}}>RESUMING_SESSION...</h2>
+      <div className="sh-logo" style={{fontSize: '50px'}}>🌀</div>
+      <h2 style={{marginTop: '20px', letterSpacing: '2px'}}>RESUMING_SESSION...</h2>
     </div>
   );
 
@@ -84,7 +93,10 @@ export default function App() {
 
         <div style={styles.navRight}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '15px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
+              <div style={{ 
+                width: '8px', height: '8px', borderRadius: '50%', 
+                backgroundColor: '#22c55e', boxShadow: '0 0 8px #22c55e' 
+              }} />
               <span style={{ fontSize: '9px', color: '#475569' }}>SYNCED</span>
             </div>
 
@@ -173,11 +185,16 @@ export default function App() {
         </div>
       )}
     </div>
+    <style>{`
+      @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      .sh-logo { animation: spin 4s linear infinite; }
+    `}</style>
     </PayPalScriptProvider>
   );
 }
 
 const styles = {
+  // Styles remain exactly as you have them, they are perfect.
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#020617', color: '#fff', overflow: 'hidden', margin: 0, padding: 0, fontFamily: 'sans-serif' },
   nav: { height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', backgroundColor: '#000', borderBottom: '1px solid #1e293b', flexShrink: 0 },
   logo: { marginLeft: '12px', fontWeight: '900', fontStyle: 'italic', fontSize: '20px', letterSpacing: '-1px' },
