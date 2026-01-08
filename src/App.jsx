@@ -1,160 +1,237 @@
 import { useState, useEffect } from "react";
-import { onAuthChange, getUserProfile, logout, subscribeLeaderboard } from "./firebase";
-import CodeEditor from "./components/CodeEditor.jsx";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import Mascot from "./components/Mascot.jsx";
 import Login from "./Login.jsx";
+import CodeEditor from "./components/CodeEditor.jsx";
+import { onAuthChange, getUserProfile, updateUserProfile, logout, subscribeLeaderboard } from "./firebase";
 
-// ... (Your languages/lessons arrays here) ...
+// FULL CURRICULUM IMPORTS
+import { pythonLessons } from "./courses/python.js";
+import { clLessons } from "./courses/clessons.js";
+import { cppLessons } from "./courses/cpplessons.js";
+import { goLessons } from "./courses/golessons.js";
+import { sqlLessons } from "./courses/sqllessons.js";
+import { rLessons } from "./courses/Rlessons.js";
+import { htmlLessons } from "./courses/html.js";
+import { cssLessons } from "./courses/css.js";
+
+const languages = [
+  { name: "Python", lessons: pythonLessons, id: "python" },
+  { name: "C", lessons: clLessons, id: "c" },
+  { name: "C++", lessons: cppLessons, id: "cpp" },
+  { name: "Go", lessons: goLessons, id: "go" },
+  { name: "SQL", lessons: sqlLessons, id: "sqlite3" },
+  { name: "R", lessons: rLessons, id: "r" },
+  { name: "HTML", lessons: htmlLessons, id: "html" },
+  { name: "CSS", lessons: cssLessons, id: "css" }
+];
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
-  const [showLeaderboard, setShowLeaderboard] = useState(false); // MODAL STATE
   const [leaderboard, setLeaderboard] = useState([]);
   const [currentLanguage, setCurrentLanguage] = useState(languages[0]);
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
-  const [isPaystackOpen, setIsPaystackOpen] = useState(false);
+  const [isPaystackOpen, setIsPaystackOpen] = useState(false); 
+  const RUN_LIMIT = 12;
 
+  // PERSISTENCE & LEADERBOARD SYNC
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (u) => {
-      if (u) {
-        const profile = await getUserProfile(u.uid);
-        setUser({ uid: u.uid, username: u.displayName, ...profile });
-        subscribeLeaderboard(setLeaderboard);
-      } else { setUser(null); }
+    const unsubscribeAuth = onAuthChange(async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const profile = await getUserProfile(firebaseUser.uid);
+          setUser({ uid: firebaseUser.uid, ...profile });
+          
+          const unsubscribeLeader = subscribeLeaderboard((data) => {
+            setLeaderboard(data);
+          });
+          return () => unsubscribeLeader();
+        } catch (err) {
+          console.error("Session recovery failed:", err);
+          setUser({ uid: firebaseUser.uid, username: "NINJA", xp: 0 });
+        }
+      } else {
+        setUser(null);
+      }
       setInitializing(false);
     });
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
 
-  if (initializing) return <div style={styles.loading}>RESUMING SESSION...</div>;
+  const handleActivatePro = async () => {
+    await updateUserProfile(user.uid, { isPro: true });
+    setUser(prev => ({ ...prev, isPro: true }));
+    setIsPaystackOpen(false);
+    alert("Welcome to Zenin Pro! Access is now UNLIMITED.");
+  };
+
+  if (initializing) return (
+    <div style={styles.loading}>
+      <div className="sh-logo" style={{fontSize: '50px'}}>🌀</div>
+      <h2 style={{marginTop: '20px', letterSpacing: '2px'}}>RESUMING_SESSION...</h2>
+    </div>
+  );
+
   if (!user) return <Login onLogin={setUser} />;
 
-  const currentLesson = currentLanguage.lessons[currentLessonIndex] || {};
-  const runsLeft = 12 - (user.dailyExecutions || 0);
+  const lessons = currentLanguage.lessons || [];
+  const current = lessons[currentLessonIndex] || { title: "Coming Soon", content: "Stay tuned for more modules!" };
+  const runsLeft = Math.max(0, RUN_LIMIT - (user?.dailyExecutions || 0));
 
   return (
-    <div style={styles.appContainer}>
-      {/* TOP NAV */}
-      <nav style={styles.nav}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <span style={styles.logo}>ZENIN<span style={{ color: '#ef4444' }}>LABS</span></span>
-          <button onClick={() => setIsPaystackOpen(true)} style={styles.proBtn}>⚡ GO PRO</button>
-        </div>
-        <div style={styles.navRight}>
-          <span style={styles.syncStatus}>● SYNCED</span>
-          <span style={styles.runsText}>{user.isPro ? "UNLIMITED" : `${runsLeft}/12 RUNS LEFT`}</span>
-          <span style={styles.userInfo}>{user.username?.toUpperCase()} | XP {user.xp || 0}</span>
-          <button onClick={() => logout()} style={styles.logoutLink}>LOGOUT</button>
-        </div>
-      </nav>
+    <PayPalScriptProvider options={{ "client-id": "test", currency: "USD" }}>
+      <div style={styles.appContainer}>
+        {/* HEADER NAV */}
+        <nav style={styles.nav}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Mascot />
+            <span style={styles.logo}>ZENIN<span style={{ color: '#ef4444' }}>LABS</span></span>
+            
+            {!user?.isPro ? (
+              <button onClick={() => setIsPaystackOpen(true)} style={styles.upgradeBtn}>⚡ GO PRO</button>
+            ) : (
+              <span style={styles.proBadge}>👑 PRO MEMBER</span>
+            )}
+          </div>
+          <div style={styles.navRight}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '15px' }}>
+              <div style={styles.syncDot} />
+              <span style={{ fontSize: '9px', color: '#475569' }}>SYNCED</span>
+            </div>
+            {!user?.isPro && (
+              <span style={styles.runsText}>{runsLeft}/{RUN_LIMIT} RUNS LEFT</span>
+            )}
+            <span onClick={() => { if(window.confirm("Logout?")) logout(); }} style={styles.userBadge}>
+              {user?.username?.toUpperCase() || 'NINJA'} | XP {user?.xp || 0}
+            </span>
+            <button onClick={() => logout()} style={styles.logoutBtn}>LOGOUT</button>
+          </div>
+        </nav>
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* SIDEBAR - RESTORED ORIGINAL */}
-        <aside style={styles.sidebar}>
-          <div style={styles.sideSection}>
-            <div style={styles.sideLabel}>CURRICULUM</div>
-            <div style={styles.langList}>
-              {languages.map(lang => (
-                <span 
-                  key={lang.id} 
-                  onClick={() => setCurrentLanguage(lang)}
-                  style={{...styles.langItem, color: currentLanguage.id === lang.id ? '#fff' : '#475569'}}
-                >
-                  {lang.name}
-                </span>
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* SIDEBAR - CURRICULUM & LEADERBOARD */}
+          <aside style={styles.sidebar}>
+            <div style={styles.curriculumHeader}>CURRICULUM</div>
+            {languages.map(lang => (
+              <button 
+                key={lang.id}
+                onClick={() => { setCurrentLanguage(lang); setCurrentLessonIndex(0); }}
+                style={{ ...styles.langBtn, color: lang.id === currentLanguage.id ? '#ef4444' : '#94a3b8' }}
+              >
+                {lang.name} {lang.id === currentLanguage.id && "•"}
+              </button>
+            ))}
+            
+            <div style={{...styles.curriculumHeader, marginTop: '30px'}}>TOP 30 NINJAS</div>
+            <div style={styles.leaderboardBox}>
+              {leaderboard.map((u, i) => (
+                <div key={i} style={styles.leaderRow}>
+                  <span style={{color: '#94a3b8'}}>{i+1}. {u.username}</span>
+                  <span style={{color: '#22c55e'}}>{u.xp}</span>
+                </div>
               ))}
             </div>
-          </div>
+          </aside>
 
-          {/* LEADERBOARD TRIGGER */}
-          <div style={{marginTop: 'auto', padding: '20px', borderTop: '1px solid #1e293b'}}>
-             <button onClick={() => setShowLeaderboard(true)} style={styles.boardBtn}>🏆 LEADERBOARD</button>
-          </div>
-        </aside>
-
-        {/* LESSON AREA */}
-        <main style={styles.lessonArea}>
-          <div style={styles.scrollContent}>
+          {/* MAIN LESSON PANEL */}
+          <main style={styles.lessonContainer}>
             <div style={styles.moduleTag}>MODULE {currentLessonIndex + 1}</div>
-            <h1 style={styles.lessonTitle}>{currentLessonIndex + 1}: {currentLesson.title}</h1>
-            <p style={styles.lessonText}>{currentLesson.content}</p>
+            <h1 style={styles.lessonTitle}>{current.title}</h1>
+            <div style={styles.contentBox}>
+              <p style={styles.contentText}>{current.content}</p>
+            </div>
             
-            {/* Solution Helpers */}
-            <div style={styles.helpBox}>
-              <div style={styles.helpLabel}>EXPECTED OUTPUT</div>
-              <div style={styles.helpCode}>{currentLesson.expectedOutput}</div>
-              <div style={styles.helpLabel}>HINT / SOLUTION</div>
-              <pre style={styles.helpCode}>{currentLesson.starterCode}</pre>
+            {/* VIEW SOLUTION SECTION */}
+            <div style={styles.solutionSection}>
+                <h4 style={styles.solLabel}>EXPECTED OUTPUT</h4>
+                <div style={styles.solCode}>{current.expectedOutput}</div>
+                <h4 style={styles.solLabel}>VIEW SOLUTION</h4>
+                <pre style={styles.solCode}>{current.starterCode}</pre>
             </div>
 
-            <div style={styles.lessonNav}>
-              <button onClick={() => setCurrentLessonIndex(p => Math.max(0, p-1))} style={styles.navBtn}>PREVIOUS</button>
-              <button onClick={() => setCurrentLessonIndex(p => p+1)} style={styles.nextBtn}>NEXT LESSON</button>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '30px', paddingBottom: '40px' }}>
+              <button onClick={() => setCurrentLessonIndex(p => Math.max(0, p-1))} style={styles.btnPrev}>PREVIOUS</button>
+              <button onClick={() => setCurrentLessonIndex(p => Math.min(lessons.length-1, p+1))} style={styles.btnNext}>NEXT LESSON</button>
             </div>
-          </div>
-        </main>
+          </main>
 
-        {/* EDITOR */}
-        <section style={{ flex: 1 }}>
-          <CodeEditor 
-            user={user} setUser={setUser} 
-            setIsPaystackOpen={setIsPaystackOpen}
-            language={currentLanguage.id} 
-            starterCode={currentLesson.starterCode} 
-            expectedOutput={currentLesson.expectedOutput} 
-          />
-        </section>
-      </div>
-
-      {/* LEADERBOARD OVERLAY */}
-      {showLeaderboard && (
-        <div style={styles.overlay} onClick={() => setShowLeaderboard(false)}>
-          <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <h3 style={{margin: '0 0 20px 0'}}>TOP 30 NINJAS</h3>
-            {leaderboard.map((u, i) => (
-              <div key={i} style={styles.boardRow}>
-                <span>{i+1}. {u.username}</span>
-                <span style={{color: '#22c55e'}}>{u.xp} XP</span>
-              </div>
-            ))}
-            <button onClick={() => setShowLeaderboard(false)} style={styles.closeBtn}>CLOSE</button>
-          </div>
+          {/* CODE EDITOR PANEL */}
+          <section style={{ flex: 1, backgroundColor: '#000' }}>
+            <CodeEditor 
+              user={user} setUser={setUser} 
+              language={currentLanguage.id}
+              starterCode={current.starterCode}
+              expectedOutput={current.expectedOutput}
+              setIsPaystackOpen={setIsPaystackOpen}
+            />
+          </section>
         </div>
-      )}
-    </div>
+
+        {/* PAYMENT MODAL */}
+        {isPaystackOpen && (
+          <div style={styles.modalOverlay}>
+            <div style={styles.modalCard}>
+              <h2 style={{ color: '#fff', fontSize: '20px' }}>Unlock Zenin Pro</h2>
+              <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px' }}>Kenya or Global Card</p>
+              <div style={styles.paymentMethodBox}>
+                  <span style={styles.methodLabel}>KENYA (M-PESA / CARD)</span>
+                  <button onClick={() => window.open("https://paystack.shop/pay/zdrj1fu6qq", "_blank")} style={styles.paystackLink}>PAY KES 500</button>
+                  <button onClick={handleActivatePro} style={styles.verifyBtn}>I HAVE PAID VIA M-PESA</button>
+              </div>
+              <div style={{ margin: '15px 0', color: '#475569', fontSize: '10px', fontWeight: 'bold' }}>OR</div>
+              <div style={styles.paymentMethodBoxPayPal}>
+                  <PayPalButtons 
+                    style={{ layout: 'vertical', shape: 'rect', height: 40 }}
+                    onApprove={handleActivatePro}
+                  />
+              </div>
+              <button onClick={() => setIsPaystackOpen(false)} style={styles.modalClose}>MAYBE LATER</button>
+            </div>
+          </div>
+        )}
+      </div>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .sh-logo { animation: spin 4s linear infinite; }
+      `}</style>
+    </PayPalScriptProvider>
   );
 }
 
 const styles = {
-  appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#000', color: '#fff', fontFamily: 'Inter, sans-serif' },
-  nav: { height: '60px', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 25px' },
-  logo: { fontWeight: '900', fontSize: '18px', letterSpacing: '1px' },
-  proBtn: { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' },
-  navRight: { display: 'flex', alignItems: 'center', gap: '20px', fontSize: '11px', fontWeight: 'bold' },
-  syncStatus: { color: '#22c55e' },
-  runsText: { color: '#475569' },
-  userInfo: { color: '#fff' },
-  logoutLink: { background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: '11px' },
-  sidebar: { width: '240px', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column' },
-  sideSection: { padding: '25px' },
-  sideLabel: { fontSize: '10px', color: '#475569', fontWeight: 'bold', marginBottom: '15px' },
-  langList: { display: 'flex', flexWrap: 'wrap', gap: '10px' },
-  langItem: { fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' },
-  boardBtn: { width: '100%', padding: '10px', background: '#1e293b', border: 'none', color: '#fff', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' },
-  lessonArea: { flex: 0.8, borderRight: '1px solid #1e293b', overflow: 'hidden' },
-  scrollContent: { height: '100%', overflowY: 'auto', padding: '40px' },
-  moduleTag: { color: '#22c55e', fontSize: '11px', fontWeight: 'bold', marginBottom: '10px' },
-  lessonTitle: { fontSize: '24px', fontWeight: '900', marginBottom: '20px' },
-  lessonText: { color: '#cbd5e1', lineHeight: '1.6', fontSize: '15px' },
-  helpBox: { marginTop: '40px', borderTop: '1px solid #1e293b', paddingTop: '20px' },
-  helpLabel: { fontSize: '10px', color: '#475569', marginBottom: '10px', fontWeight: 'bold' },
-  helpCode: { display: 'block', padding: '15px', background: '#020617', color: '#64748b', borderRadius: '5px', marginBottom: '20px', fontSize: '12px', fontFamily: 'monospace' },
-  lessonNav: { display: 'flex', gap: '15px', marginTop: '40px', paddingBottom: '40px' },
-  navBtn: { padding: '12px 25px', background: '#1e293b', border: 'none', color: '#fff', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
-  nextBtn: { padding: '12px 25px', background: '#fff', border: 'none', color: '#000', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
-  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modal: { width: '300px', backgroundColor: '#020617', padding: '30px', borderRadius: '12px', border: '1px solid #1e293b' },
-  boardRow: { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #1e293b', fontSize: '13px' },
-  closeBtn: { marginTop: '20px', width: '100%', padding: '10px', background: '#ef4444', border: 'none', color: '#fff', borderRadius: '4px', cursor: 'pointer' },
-  loading: { height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000', color: '#22c55e', fontFamily: 'monospace' }
+  appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#020617', color: '#fff', overflow: 'hidden' },
+  nav: { height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', backgroundColor: '#000', borderBottom: '1px solid #1e293b' },
+  logo: { marginLeft: '12px', fontWeight: '900', fontStyle: 'italic', fontSize: '20px', letterSpacing: '-1px' },
+  upgradeBtn: { marginLeft: '20px', backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '5px 12px', borderRadius: '4px', fontSize: '10px', fontWeight: '900', cursor: 'pointer' },
+  proBadge: { marginLeft: '20px', color: '#22c55e', fontSize: '10px', fontWeight: '900', border: '1px solid #22c55e', padding: '4px 10px', borderRadius: '4px' },
+  navRight: { display: 'flex', alignItems: 'center', gap: '15px' },
+  syncDot: { width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', boxShadow: '0 0 8px #22c55e' },
+  runsText: { color: '#475569', fontSize: '11px', fontWeight: 'bold' },
+  userBadge: { color: '#22c55e', fontSize: '12px', fontWeight: 'bold', background: 'rgba(34, 197, 94, 0.1)', padding: '4px 12px', borderRadius: '20px', cursor: 'pointer' },
+  logoutBtn: { background: 'none', border: 'none', color: '#475569', fontSize: '11px', cursor: 'pointer' },
+  sidebar: { width: '220px', backgroundColor: '#000', borderRight: '1px solid #1e293b', overflowY: 'auto', display: 'flex', flexDirection: 'column' },
+  curriculumHeader: { padding: '20px 16px 10px', fontSize: '10px', fontWeight: '800', color: '#475569' },
+  langBtn: { width: '100%', textAlign: 'left', padding: '12px 20px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' },
+  leaderboardBox: { padding: '0 20px', flex: 1 },
+  leaderRow: { display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '8px' },
+  lessonContainer: { flex: '1 1 50%', backgroundColor: '#020617', padding: '40px', overflowY: 'auto', borderRight: '1px solid #1e293b' },
+  moduleTag: { color: '#22c55e', fontSize: '11px', fontWeight: '900', marginBottom: '8px' },
+  lessonTitle: { fontSize: '32px', fontWeight: '900', fontStyle: 'italic', marginBottom: '24px' },
+  contentBox: { backgroundColor: 'rgba(255,255,255,0.03)', borderLeft: '4px solid #22c55e', padding: '24px', borderRadius: '8px', marginBottom: '40px' },
+  contentText: { color: '#cbd5e1', fontSize: '15px', lineHeight: '1.7' },
+  solutionSection: { marginTop: '20px', paddingTop: '20px', borderTop: '1px dashed #1e293b' },
+  solLabel: { fontSize: '10px', color: '#475569', marginBottom: '8px' },
+  solCode: { display: 'block', padding: '15px', background: '#000', borderRadius: '8px', color: '#64748b', fontSize: '12px', fontFamily: 'monospace', marginBottom: '20px' },
+  btnPrev: { flex: 1, padding: '14px', borderRadius: '8px', backgroundColor: '#1e293b', color: '#fff', border: 'none', cursor: 'pointer' },
+  btnNext: { flex: 1, padding: '14px', borderRadius: '8px', backgroundColor: '#22c55e', color: '#000', border: 'none', cursor: 'pointer' },
+  loading: { height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020617', color: '#ef4444', fontFamily: 'monospace' },
+  modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 },
+  modalCard: { background: '#020617', border: '1px solid #1e293b', padding: '30px', borderRadius: '20px', width: '360px', textAlign: 'center' },
+  modalClose: { background: 'none', border: 'none', color: '#475569', marginTop: '20px', cursor: 'pointer', fontSize: '11px' },
+  paymentMethodBox: { padding: '15px', border: '1px solid #22c55e', borderRadius: '12px', background: 'rgba(34, 197, 94, 0.05)', textAlign: 'left' },
+  paymentMethodBoxPayPal: { padding: '15px', border: '1px solid #cbd5e1', borderRadius: '12px', background: '#fff', textAlign: 'left' },
+  methodLabel: { fontSize: '9px', fontWeight: '900', color: '#22c55e', display: 'block', marginBottom: '10px' },
+  paystackLink: { width: '100%', display: 'block', backgroundColor: '#22c55e', color: '#000', padding: '12px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer', marginBottom: '5px' },
+  verifyBtn: { width: '100%', backgroundColor: 'transparent', color: '#22c55e', border: 'none', padding: '5px', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold' }
 };
