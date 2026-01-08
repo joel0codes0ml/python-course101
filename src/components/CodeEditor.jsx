@@ -7,21 +7,23 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState("");
 
+  // Reset editor for every new lesson
   useEffect(() => {
     setCode(""); 
     setOutput("");
     setError("");
   }, [starterCode, language]);
 
-  const playSuccessSound = () => {
+  const playIphoneChime = () => {
+    // Official high-quality iPhone success/notification ping
     const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3');
     audio.volume = 0.5;
-    audio.play().catch(() => {});
+    audio.play().catch(() => console.log("Sound muted: Interact with UI first"));
   };
 
   const execute = async () => {
-    const currentRuns = user?.dailyExecutions || 0;
-    if (!user?.isPro && currentRuns >= 12) {
+    // 1. Pro Limit Check
+    if (!user?.isPro && (user?.dailyExecutions || 0) >= 12) {
       setIsPaystackOpen(true);
       return;
     }
@@ -46,38 +48,45 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
       let xpBonus = 0;
       let isSuccess = false;
 
+      // 2. Success Validation (Matches Expected Output)
       if (expectedOutput && result.trim() === expectedOutput.trim()) {
         xpBonus = 20;
         isSuccess = true;
-        playSuccessSound();
+        playIphoneChime(); // Play the "Ding!"
       }
 
-      setUser(prev => {
-        const nextXp = (prev.xp || 0) + xpBonus;
-        const nextRuns = (prev.dailyExecutions || 0) + 1;
-        const today = new Date().toDateString();
-        let nextStreak = prev.streak || 0;
+      // 3. Instant XP & Streak Sync
+      const today = new Date().toDateString();
+      const nextXp = (user?.xp || 0) + xpBonus;
+      const nextRuns = (user?.dailyExecutions || 0) + 1;
+      
+      let nextStreak = user?.streak || 0;
+      if (!user?.lastExecutionDate) {
+        nextStreak = 1;
+      } else if (user.lastExecutionDate !== today) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        nextStreak = (user.lastExecutionDate === yesterday.toDateString()) ? nextStreak + 1 : 1;
+      }
 
-        if (!prev.lastExecutionDate) {
-          nextStreak = 1;
-        } else if (prev.lastExecutionDate !== today) {
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          nextStreak = (prev.lastExecutionDate === yesterday.toDateString()) ? nextStreak + 1 : 1;
-        }
+      const updates = { 
+        xp: nextXp, 
+        dailyExecutions: nextRuns, 
+        streak: nextStreak, 
+        lastExecutionDate: today 
+      };
 
-        const updatedData = { xp: nextXp, dailyExecutions: nextRuns, streak: nextStreak, lastExecutionDate: today };
-        updateUserProfile(prev.uid, updatedData).catch(err => console.error("Sync Error:", err));
-        return { ...prev, ...updatedData };
-      });
+      // 4. Force state and DB to sync immediately
+      setUser(prev => ({ ...prev, ...updates }));
+      await updateUserProfile(user.uid, updates);
 
       if (data.run.stderr) {
         setError(data.run.stderr);
       } else {
-        setOutput(isSuccess ? `${result}\n\n✨ CHALLENGE COMPLETE! +20 XP` : result);
+        setOutput(isSuccess ? `${result}\n\n✨ SUCCESS! +20 XP earned.` : result);
       }
     } catch (err) {
-      setError("Execution failed. Check your internet.");
+      setError("Execution failed. Check internet.");
     } finally {
       setIsRunning(false);
     }
@@ -85,79 +94,83 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
 
   return (
     <div style={ui.container}>
-      {/* HEADER SECTION */}
+      {/* HEADER */}
       <div style={ui.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: isRunning ? '#f59e0b' : '#22c55e' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ ...ui.statusDot, backgroundColor: isRunning ? '#f59e0b' : '#22c55e' }} />
           <span>{language.toUpperCase()} COMPILER</span>
         </div>
-        <div style={ui.headerRight}>V.2026.1</div>
+        <div style={{ color: '#334155', fontSize: '9px' }}>STREAK: {user?.streak || 0} 🔥</div>
       </div>
 
-      {/* EDITOR AREA */}
+      {/* COLORFUL EDITOR */}
       <div style={ui.editorWrapper}>
         <div style={ui.editorLabel}>WRITE CODE HERE</div>
         <textarea 
           value={code} 
           onChange={(e) => setCode(e.target.value)} 
-          placeholder={`# Enter your ${language} solution...`}
+          placeholder={`// Solution goes here...`}
           style={ui.textarea} 
           spellCheck="false" 
         />
       </div>
 
-      {/* ACTION BAR */}
+      {/* FOOTER */}
       <div style={ui.footer}>
         <button onClick={execute} disabled={isRunning} style={ui.runBtn}>
           {isRunning ? "COMPILING..." : "RUN CODE"}
         </button>
       </div>
 
-      {/* TERMINAL AREA */}
+      {/* TERMINAL */}
       <div style={ui.outputBox}>
         <div style={ui.terminalHeader}>CONSOLE</div>
         <pre style={{ ...ui.pre, color: error ? '#f87171' : '#a7f3d0' }}>
-          {error || output || "Waiting for code execution..."}
+          {error || output || "Terminal ready for output..."}
         </pre>
       </div>
     </div>
   );
 };
 
+// CODDY TECH STYLES
 const ui = {
-  container: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#0f172a', borderLeft: '1px solid #1e293b' },
-  header: { display: 'flex', justifyContent: 'space-between', padding: '10px 18px', backgroundColor: '#020617', color: '#64748b', fontSize: '10px', fontWeight: 'bold', borderBottom: '1px solid #1e293b', letterSpacing: '0.5px' },
-  headerRight: { color: '#334155' },
-  editorWrapper: { flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' },
-  editorLabel: { position: 'absolute', top: '10px', right: '20px', fontSize: '9px', fontWeight: 'bold', color: '#1e293b', pointerEvents: 'none', zIndex: 1 },
+  container: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#020617' },
+  header: { display: 'flex', justifyContent: 'space-between', padding: '12px 20px', backgroundColor: '#000', color: '#64748b', fontSize: '10px', fontWeight: 'bold', borderBottom: '1px solid #1e293b' },
+  statusDot: { width: '8px', height: '8px', borderRadius: '50%', boxShadow: '0 0 10px currentColor' },
+  editorWrapper: { flex: 1, position: 'relative', display: 'flex', backgroundColor: '#020617' },
+  editorLabel: { position: 'absolute', top: '15px', right: '25px', fontSize: '10px', fontWeight: '900', color: '#1e293b', zIndex: 1, letterSpacing: '1px' },
   textarea: { 
     flex: 1, 
-    backgroundColor: '#020617', 
-    color: '#e2e8f0', 
-    padding: '30px 25px', 
+    backgroundColor: 'transparent', 
+    // CoddyTech Colorful Vibes:
+    color: '#38bdf8', // Neon Blue for main text
+    padding: '35px 25px', 
     border: 'none', 
     fontFamily: '"JetBrains Mono", "Fira Code", monospace', 
     outline: 'none', 
-    fontSize: '14px', 
+    fontSize: '15px', 
     resize: 'none', 
-    lineHeight: '1.6',
-    caretColor: '#22c55e'
+    lineHeight: '1.8',
+    caretColor: '#facc15', // Yellow glowing cursor
+    textShadow: '0 0 2px rgba(56, 189, 248, 0.2)',
   },
-  footer: { padding: '10px 18px', borderTop: '1px solid #1e293b', display: 'flex', justifyContent: 'flex-end', backgroundColor: '#020617' },
+  footer: { padding: '12px 20px', borderTop: '1px solid #1e293b', display: 'flex', justifyContent: 'flex-end', backgroundColor: '#000' },
   runBtn: { 
     backgroundColor: '#22c55e', 
     color: '#064e3b', 
     border: 'none', 
-    padding: '8px 24px', 
-    borderRadius: '4px', 
-    fontWeight: '800', 
+    padding: '10px 35px', 
+    borderRadius: '8px', 
+    fontWeight: '900', 
     cursor: 'pointer', 
-    fontSize: '11px',
-    boxShadow: '0 0 15px rgba(34, 197, 94, 0.2)' 
+    fontSize: '12px',
+    boxShadow: '0 4px 15px rgba(34, 197, 94, 0.3)',
+    transition: '0.2s'
   },
-  outputBox: { height: '200px', backgroundColor: '#000', padding: '18px', borderTop: '1px solid #1e293b', overflowY: 'auto' },
-  terminalHeader: { fontSize: '9px', color: '#334155', fontWeight: 'bold', marginBottom: '8px', letterSpacing: '1px' },
-  pre: { margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.5' }
+  outputBox: { height: '180px', backgroundColor: '#000', padding: '20px', borderTop: '1px solid #1e293b', overflowY: 'auto' },
+  terminalHeader: { fontSize: '9px', color: '#334155', fontWeight: 'bold', marginBottom: '10px' },
+  pre: { margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.6' }
 };
 
 export default CodeEditor;
