@@ -3,6 +3,8 @@ import Mascot from "./components/Mascot.jsx";
 import CodeEditor from "./components/CodeEditor.jsx";
 import Login from "./Login.jsx";
 import { onAuthChange, getUserProfile, updateUserProfile } from "./firebase";
+// Import PayPal components
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
 // Keep all your course data imports
 import { pythonLessons } from "./courses/python.js";
@@ -30,9 +32,9 @@ export default function App() {
   const [initializing, setInitializing] = useState(true);
   const [currentLanguage, setCurrentLanguage] = useState(languages[0]);
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
-  const [isPaystackOpen, setIsPaystackOpen] = useState(false); // Replaced PayPal state
+  const [isPaystackOpen, setIsPaystackOpen] = useState(false); 
 
-  const RUN_LIMIT = 12; // Your limit
+  const RUN_LIMIT = 12; 
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (firebaseUser) => {
@@ -47,7 +49,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // OPTION B: Manual Activation
   const handleActivatePro = async () => {
     await updateUserProfile(user.uid, { isPro: true });
     setUser(prev => ({ ...prev, isPro: true }));
@@ -62,6 +63,7 @@ export default function App() {
   const current = lessons[currentLessonIndex] || { title: "End of Path", content: "Select a lesson to begin." };
 
   return (
+    <PayPalScriptProvider options={{ "client-id": "YOUR_PAYPAL_CLIENT_ID" }}>
     <div style={styles.appContainer}>
       {/* HEADER */}
       <nav style={styles.nav}>
@@ -130,31 +132,45 @@ export default function App() {
         </div>
       </div>
 
-      {/* PAYSTACK MODAL (Replaces PayPal) */}
+      {/* MULTI-GATEWAY MODAL */}
       {isPaystackOpen && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
-            <div style={{ marginBottom: '24px' }}>
-              <h2 style={{ color: '#fff' }}>Unlock Zenin Pro</h2>
-              <p style={{ color: '#94a3b8', fontSize: '14px' }}>
-                Pay 500 KES via M-Pesa to get unlimited code executions.
-              </p>
+            <div style={{ marginBottom: '20px' }}>
+              <h2 style={{ color: '#fff', fontSize: '20px' }}>Unlock Zenin Pro</h2>
+              <p style={{ color: '#94a3b8', fontSize: '13px' }}>Select your preferred payment method.</p>
             </div>
 
-            <a 
-              href="https://paystack.shop/pay/zdrj1fu6qq" 
-              target="_blank" 
-              rel="noreferrer"
-              style={styles.paystackLink}
-            >
-              PAY WITH M-PESA / CARD
-            </a>
-
-            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #1e293b' }}>
-                <p style={{ fontSize: '11px', color: '#475569' }}>Already paid?</p>
+            {/* PAYSTACK SECTION */}
+            <div style={styles.paymentMethodBox}>
+                <span style={styles.methodLabel}>KENYA (M-PESA / CARD)</span>
+                <a 
+                  href="https://paystack.shop/pay/zdrj1fu6qq" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  style={styles.paystackLink}
+                >
+                  PAY KES 500
+                </a>
                 <button onClick={handleActivatePro} style={styles.verifyBtn}>
-                  ACTIVATE PRO NOW
+                  I HAVE PAID VIA M-PESA
                 </button>
+            </div>
+
+            <div style={{ margin: '15px 0', color: '#475569', fontSize: '10px', fontWeight: 'bold' }}>OR</div>
+
+            {/* PAYPAL SECTION */}
+            <div style={styles.paymentMethodBoxPayPal}>
+                <span style={{...styles.methodLabel, color: '#003087'}}>GLOBAL (PAYPAL / CARD)</span>
+                <PayPalButtons 
+                  style={{ layout: 'vertical', shape: 'rect', height: 40 }}
+                  createOrder={(data, actions) => {
+                    return actions.order.create({
+                      purchase_units: [{ amount: { value: "4.00" } }]
+                    });
+                  }}
+                  onApprove={handleActivatePro}
+                />
             </div>
 
             <button onClick={() => setIsPaystackOpen(false)} style={styles.modalClose}>MAYBE LATER</button>
@@ -162,10 +178,10 @@ export default function App() {
         </div>
       )}
     </div>
+    </PayPalScriptProvider>
   );
 }
 
-// STYLES (Kept your original styles and added Paystack specific ones)
 const styles = {
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#020617', color: '#fff', overflow: 'hidden', margin: 0, padding: 0, fontFamily: 'sans-serif' },
   nav: { height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', backgroundColor: '#000', borderBottom: '1px solid #1e293b', flexShrink: 0 },
@@ -186,9 +202,12 @@ const styles = {
   btnPrev: { flex: 1, padding: '14px', borderRadius: '8px', backgroundColor: '#1e293b', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer' },
   btnNext: { flex: 1, padding: '14px', borderRadius: '8px', backgroundColor: '#22c55e', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer' },
   loading: { height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020617', color: '#ef4444', fontFamily: 'monospace' },
-  modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 },
-  modalCard: { background: '#020617', border: '1px solid #1e293b', padding: '32px', borderRadius: '20px', width: '340px', textAlign: 'center' },
+  modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 },
+  modalCard: { background: '#020617', border: '1px solid #1e293b', padding: '30px', borderRadius: '20px', width: '360px', textAlign: 'center' },
   modalClose: { background: 'none', border: 'none', color: '#475569', marginTop: '20px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' },
-  paystackLink: { display: 'block', backgroundColor: '#22c55e', color: '#000', padding: '14px', borderRadius: '8px', fontWeight: 'bold', textDecoration: 'none' },
-  verifyBtn: { backgroundColor: 'transparent', color: '#22c55e', border: '1px solid #22c55e', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', marginTop: '10px' }
+  paymentMethodBox: { padding: '15px', border: '1px solid #22c55e', borderRadius: '12px', background: 'rgba(34, 197, 94, 0.05)', textAlign: 'left' },
+  paymentMethodBoxPayPal: { padding: '15px', border: '1px solid #cbd5e1', borderRadius: '12px', background: '#fff', textAlign: 'left' },
+  methodLabel: { fontSize: '9px', fontWeight: '900', color: '#22c55e', display: 'block', marginBottom: '10px' },
+  paystackLink: { display: 'block', backgroundColor: '#22c55e', color: '#000', padding: '12px', borderRadius: '8px', fontWeight: 'bold', textDecoration: 'none', textAlign: 'center', marginBottom: '5px' },
+  verifyBtn: { width: '100%', backgroundColor: 'transparent', color: '#22c55e', border: 'none', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold' }
 };
