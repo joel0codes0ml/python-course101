@@ -39,22 +39,29 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Keep users logged in after refresh
+// Persist session across refreshes
 setPersistence(auth, browserLocalPersistence)
   .catch((err) => console.error("Persistence Error:", err));
 
-// High-speed Database initialization (WebSockets + Local Cache)
+// High-speed Database initialization
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ 
     tabManager: persistentMultipleTabManager() 
   })
 });
 
-// ================= AUTH HELPERS (COMPLETE) =================
+// ================= AUTH HELPERS =================
 
 export const signUpWithEmail = async (email, password, username) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(cred.user, { displayName: username });
+  
+  // Create the initial database entry immediately after signup
+  await createUserProfile(cred.user.uid, { 
+    username: username,
+    email: email 
+  });
+  
   return cred.user;
 };
 
@@ -72,14 +79,16 @@ export const loginWithApple = async () => {
 export const logout = () => signOut(auth);
 export const onAuthChange = (cb) => onAuthStateChanged(auth, cb);
 
-// ================= FIRESTORE HELPERS (OPTIMIZED) =================
+// ================= FIRESTORE HELPERS =================
 
-/** Creates the ninja profile with League support */
+/** Creates profile with Streak and Tier support */
 export const createUserProfile = async (uid, data) => {
   const ref = doc(db, "users", uid);
   return setDoc(ref, {
     xp: 0,
     dailyExecutions: 0, 
+    streak: 0,                // Added for tracking
+    lastExecutionDate: "",    // Added for tracking
     isPro: false,
     completedLessons: [],
     online: true,
@@ -98,19 +107,21 @@ export const getUserProfile = async (uid) => {
   }
 };
 
+/** Optimized update function used by CodeEditor */
 export const updateUserProfile = async (uid, updates) => {
+  if (!uid) return;
   const ref = doc(db, "users", uid);
   return updateDoc(ref, updates);
 };
 
-/** * REAL-TIME LEADERBOARD (Top 30 Ninjas)
- * This limit(30) ensures fast performance as your user base grows.
+/** REAL-TIME LEADERBOARD 
+ * Fetches top 100 to ensure all 5 tiers (20 per tier) have data
  */
 export const subscribeLeaderboard = (callback) => {
   const q = query(
     collection(db, "users"), 
     orderBy("xp", "desc"), 
-    limit(30)
+    limit(100) 
   );
   
   return onSnapshot(q, (snap) => {
