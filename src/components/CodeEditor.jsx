@@ -1,114 +1,91 @@
-import { useState, useEffect } from "react";
-import Editor from "@monaco-editor/react";
-import { updateUserProfile } from "../firebase"; // Ensure this is imported
+import React, { useState } from 'react';
+import { updateUserProfile } from "../firebase";
 
-export default function CodeEditor({ user, setUser, language, version, starterCode, expectedOutput }) {
-  const [code, setCode] = useState(starterCode);
+const CodeEditor = ({ user, setUser, language, starterCode, expectedOutput }) => {
+  const [code, setCode] = useState(starterCode || "");
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => { 
-    setCode(starterCode); 
-    setOutput(""); 
-    setError(""); 
-  }, [starterCode]);
-
   const execute = async () => {
-    // 🔒 THE GATEKEEPER LOGIC
+    // 1. THE GATEKEEPER CHECK
     const currentRuns = user?.dailyExecutions || 0;
     
     if (!user?.isPro && currentRuns >= 12) {
-      setError("LIMIT REACHED: 12/12 runs used. Upgrade to Pro to continue!");
-      return;
+      setError("⛔ LIMIT REACHED: 12/12 runs used.");
+      // You can also trigger the modal automatically here if you pass down the toggle function
+      alert("Please upgrade to Zenin Pro to continue running code!");
+      return; // STOPS THE FUNCTION HERE
     }
 
     setIsRunning(true);
-    setOutput("SYSTEM: Initializing...");
+    setOutput("SYSTEM: Compiling...");
     setError("");
 
     try {
-      const res = await fetch("https://emkc.org/api/v2/piston/execute", {
+      const response = await fetch("https://emkc.org/api/v2/piston/execute", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          language, 
-          version: version || "*", 
-          files: [{ content: code }] 
-        })
+        body: JSON.stringify({
+          language: language,
+          version: "*",
+          files: [{ content: code }],
+        }),
       });
 
-      const data = await res.json();
-      const run = data.run;
-      const compile = data.compile;
+      const data = await response.json();
 
-      if (compile?.stderr) {
-        setError(compile.stderr);
-      } else if (run?.stderr) {
-        setError(run.stderr);
+      // 2. INCREMENT THE RUN COUNT IN FIREBASE
+      const nextRuns = currentRuns + 1;
+      await updateUserProfile(user.uid, { dailyExecutions: nextRuns });
+      
+      // 3. UPDATE LOCAL STATE (This updates the 'Runs Left' in the Nav)
+      setUser(prev => ({ ...prev, dailyExecutions: nextRuns }));
+
+      if (data.run.stderr) {
+        setError(data.run.stderr);
       } else {
-        const runOutput = run?.output || "";
-        const cleanOutput = runOutput.trim();
-        const cleanExpected = expectedOutput ? expectedOutput.trim() : null;
-
-        // ✅ UPDATE FIREBASE COUNT AFTER RUN
-        const nextRuns = currentRuns + 1;
-        await updateUserProfile(user.uid, { dailyExecutions: nextRuns });
-        setUser(prev => ({ ...prev, dailyExecutions: nextRuns }));
-
-        if (cleanExpected && cleanOutput !== cleanExpected) {
-          setOutput(runOutput);
-          setError("FAIL: Output does not match mission goal.");
-        } else {
-          setOutput(cleanExpected ? `SUCCESS!\n\n${runOutput}` : runOutput);
-        }
+        setOutput(data.run.output);
       }
-    } catch (e) {
-      setError("System Error: Engine unreachable.");
+    } catch (err) {
+      setError("Execution failed. Check your connection.");
     } finally {
       setIsRunning(false);
     }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#000', fontFamily: 'monospace' }}>
-      <div style={{ flex: 1, borderBottom: '1px solid #1e293b' }}>
-        <Editor
-          height="100%"
-          theme="vs-dark"
-          language={language === "sqlite3" ? "sql" : language}
-          value={code}
-          onChange={(v) => setCode(v || "")}
-          options={{ fontSize: 14, minimap: { enabled: false }, automaticLayout: true }}
-        />
+    <div style={editorStyles.container}>
+      <textarea
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        style={editorStyles.textarea}
+      />
+      
+      <div style={editorStyles.footer}>
+        <button 
+          onClick={execute} 
+          disabled={isRunning}
+          style={user?.isPro || (user?.dailyExecutions || 0) < 12 ? editorStyles.runBtn : editorStyles.disabledBtn}
+        >
+          {isRunning ? "RUNNING..." : "RUN CODE"}
+        </button>
       </div>
 
-      <div style={{ height: '40%', display: 'flex', flexDirection: 'column', backgroundColor: '#050505', padding: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <span style={{ fontSize: '10px', color: '#475569', fontWeight: 'bold' }}>
-            {!user?.isPro ? `RUNS: ${user?.dailyExecutions || 0}/12` : "PRO UNLIMITED"}
-          </span>
-          <button 
-            onClick={execute} 
-            disabled={isRunning}
-            style={{ 
-              backgroundColor: (!user?.isPro && (user?.dailyExecutions || 0) >= 12) ? '#334155' : '#ef4444', 
-              color: '#fff', padding: '8px 20px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 'bold' 
-            }}
-          >
-            {isRunning ? "RUNNING..." : "RUN CODE ▶"}
-          </button>
-        </div>
-        {/* Output area stays the same */}
-        <div style={{ flex: 1, overflowY: 'auto', background: '#000', padding: '10px', borderRadius: '4px', border: '1px solid #1e293b' }}>
-          {error ? (
-            <pre style={{ color: '#ef4444', fontSize: '12px', margin: 0, whiteSpace: 'pre-wrap' }}>{error}</pre>
-          ) : (
-            <pre style={{ color: '#22c55e', fontSize: '12px', margin: 0, whiteSpace: 'pre-wrap' }}>{output || "> Ready..."}</pre>
-          )}
-        </div>
+      <div style={editorStyles.outputBox}>
+        {error ? <pre style={{color: '#ef4444'}}>{error}</pre> : <pre>{output}</pre>}
       </div>
     </div>
   );
-}
+};
+
+const editorStyles = {
+  container: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#000' },
+  textarea: { flex: 1, backgroundColor: '#000', color: '#22c55e', padding: '20px', border: 'none', fontFamily: 'monospace', resize: 'none', outline: 'none' },
+  footer: { padding: '10px', borderTop: '1px solid #1e293b', display: 'flex', justifyContent: 'flex-end' },
+  runBtn: { backgroundColor: '#22c55e', color: '#000', border: 'none', padding: '8px 24px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' },
+  disabledBtn: { backgroundColor: '#1e293b', color: '#475569', border: 'none', padding: '8px 24px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed' },
+  outputBox: { height: '150px', backgroundColor: '#020617', borderTop: '1px solid #1e293b', padding: '15px', overflowY: 'auto', fontSize: '13px' }
+};
+
+export default CodeEditor;
 
