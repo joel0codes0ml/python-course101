@@ -7,7 +7,9 @@ import {
   updateProfile,
   signInWithPopup,
   OAuthProvider,
-  onAuthStateChanged
+  onAuthStateChanged,
+  setPersistence,           // ADDED
+  browserLocalPersistence   // ADDED
 } from "firebase/auth";
 import {
   initializeFirestore,
@@ -33,38 +35,34 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-
 export const auth = getAuth(app);
 
-// SPEED FIX: Optimized for Vercel/Web production
+// 1. SESSION PERSISTENCE FIX: This keeps users logged in on reload
+setPersistence(auth, browserLocalPersistence)
+  .catch((err) => console.error("Persistence Error:", err));
+
+// 2. SPEED FIX: Removed Long Polling (WebSockets are faster)
 export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  useFetchStreams: false,
-  // This helps multiple tabs share the connection so it stays "warm"
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  localCache: persistentLocalCache({ 
+    tabManager: persistentMultipleTabManager() 
+  })
 });
 
 // ================= AUTH HELPERS =================
 
 export const signUpWithEmail = async (email, password, username) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
-  
-  // RUN IN BACKGROUND: Don't wait for the display name update to finish
-  updateProfile(cred.user, { displayName: username }).catch(e => console.error("Profile update failed", e));
-  
+  updateProfile(cred.user, { displayName: username }).catch(e => console.error(e));
   return cred.user;
 };
 
 export const loginWithEmail = async (email, password) => {
-  // Simple, direct login
-  const cred = await signInWithEmailAndPassword(auth, email, password);
-  return cred.user;
+  return (await signInWithEmailAndPassword(auth, email, password)).user;
 };
 
 export const loginWithApple = async () => {
   const provider = new OAuthProvider("apple.com");
-  const result = await signInWithPopup(auth, provider);
-  return result.user;
+  return (await signInWithPopup(auth, provider)).user;
 };
 
 export const logout = () => signOut(auth);
@@ -74,19 +72,26 @@ export const onAuthChange = (cb) => onAuthStateChanged(auth, cb);
 
 export const createUserProfile = async (uid, data) => {
   const ref = doc(db, "users", uid);
-  // Set and forget
   return setDoc(ref, {
     xp: 0,
+    dailyExecutions: 0, // Added to track the 12 runs
+    isPro: false,
     completedLessons: [],
     online: true,
     createdAt: new Date().toISOString(),
     ...data,
-  }, { merge: true }); // Merge true prevents overwriting if double-called
+  }, { merge: true });
 };
 
 export const getUserProfile = async (uid) => {
-  const snap = await getDoc(doc(db, "users", uid));
-  return snap.exists() ? snap.data() : null;
+  // Use a "try/catch" to prevent infinite hanging
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    return snap.exists() ? snap.data() : null;
+  } catch (e) {
+    console.error("Fetch profile failed:", e);
+    return null;
+  }
 };
 
 export const updateUserProfile = async (uid, updates) => {
