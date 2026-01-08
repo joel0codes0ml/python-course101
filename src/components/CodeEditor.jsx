@@ -1,72 +1,81 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { updateUserProfile } from "../firebase";
 
 const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, expectedOutput }) => {
   const [code, setCode] = useState("");
   const [output, setOutput] = useState("");
-  const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState("");
+  const [isRunning, setIsRunning] = useState(false);
+  const editorRef = useRef(null);
 
   useEffect(() => {
-    setCode(""); 
+    setCode(starterCode || "");
     setOutput("");
     setError("");
   }, [starterCode, language]);
 
-  const isOutOfRuns = !user?.isPro && (user?.dailyExecutions || 0) >= 12;
-
-  const playIphoneChime = () => {
-    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3');
-    audio.volume = 0.5;
-    audio.play().catch(() => {});
+  // SYNTAX HIGHLIGHTING LOGIC (Coddy Style)
+  const highlightCode = (input) => {
+    if (!input) return "";
+    return input
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") // Escape HTML
+      .replace(/\b(def|function|return|if|else|for|while|import|from|class|try|except|let|const|var)\b/g, '<span style="color: #ff79c6;">$1</span>') // Keywords (Pink)
+      .replace(/\b(print|console|log|len|range|str|int|float|bool)\b/g, '<span style="color: #50fa7b;">$1</span>') // Functions (Green)
+      .replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, '<span style="color: #f1fa8c;">$&</span>') // Strings (Yellow)
+      .replace(/\b(True|False|None|true|false|null)\b/g, '<span style="color: #bd93f9;">$1</span>') // Bools/Nulls (Purple)
+      .replace(/\b\d+\b/g, '<span style="color: #bd93f9;">$&</span>') // Numbers (Purple)
+      .replace(/#.*$/gm, '<span style="color: #6272a4;">$&</span>'); // Comments (Grey)
   };
 
   const execute = async () => {
-    if (isOutOfRuns) {
+    if (!user?.isPro && (user?.dailyExecutions || 0) >= 12) {
       setIsPaystackOpen(true);
       return;
     }
 
     setIsRunning(true);
-    setOutput("SYSTEM: Initializing...");
     setError("");
+    setOutput("🚀 SYSTEM: EXECUTING...");
+
+    const langMap = { 'sqlite3': 'sql', 'python': 'python', 'c': 'c', 'cpp': 'cpp', 'go': 'go' };
+    const engineLang = langMap[language] || language;
 
     try {
       const response = await fetch("https://emkc.org/api/v2/piston/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          language: language === "sqlite3" ? "sql" : language, 
-          version: "*", 
-          files: [{ content: code }] 
+        body: JSON.stringify({
+          language: engineLang,
+          version: "*",
+          files: [{ content: code }]
         }),
       });
 
       const data = await response.json();
-      const result = data.run.output || "";
-      let xpBonus = 0;
+      const run = data.run;
 
-      if (expectedOutput && result.trim() === expectedOutput.trim()) {
-        xpBonus = 20;
-        playIphoneChime();
-      }
-
-      const updates = { 
-        xp: (user?.xp || 0) + xpBonus, 
-        dailyExecutions: (user?.dailyExecutions || 0) + 1,
-        lastExecutionDate: new Date().toDateString() 
-      };
-
-      setUser(prev => ({ ...prev, ...updates }));
-      await updateUserProfile(user.uid, updates);
-
-      if (data.run.stderr) {
-        setError(data.run.stderr);
+      if (run.stderr) {
+        setError(run.stderr);
+        setOutput("");
       } else {
-        setOutput(xpBonus > 0 ? `${result}\n\n✨ SUCCESS! +20 XP` : result);
+        const userResult = run.output.trim();
+        const goal = expectedOutput ? expectedOutput.trim() : "";
+
+        if (goal && userResult === goal) {
+          setOutput(`✅ SUCCESS! +20 XP\n\n${userResult}`);
+          const updates = { 
+            xp: (user?.xp || 0) + 20, 
+            dailyExecutions: (user?.dailyExecutions || 0) + 1,
+            lastExecutionDate: new Date().toDateString()
+          };
+          setUser(prev => ({ ...prev, ...updates }));
+          await updateUserProfile(user.uid, updates);
+        } else {
+          setOutput(userResult || "Code executed with no output.");
+        }
       }
     } catch (err) {
-      setError("Execution failed.");
+      setError("Engine timeout. Check connection.");
     } finally {
       setIsRunning(false);
     }
@@ -74,83 +83,67 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
 
   return (
     <div style={ui.container}>
-      <div style={ui.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ ...ui.statusDot, backgroundColor: isRunning ? '#f59e0b' : (isOutOfRuns ? '#ef4444' : '#22c55e') }} />
-          <span>{language.toUpperCase()} ENGINE V.2026.1</span>
-        </div>
-      </div>
-
+      {/* EDITOR SECTION */}
       <div style={ui.editorWrapper}>
-        <div style={ui.editorLabel}>CODING_ZONE</div>
-        {/* THE "ATTRACTIVE" TEXTAREA */}
+        <div 
+          style={ui.highlighter} 
+          dangerouslySetInnerHTML={{ __html: highlightCode(code) + "\n" }} 
+        />
         <textarea 
           value={code} 
           onChange={(e) => setCode(e.target.value)} 
-          placeholder={`// Type your ${language} solution...`}
+          onScroll={(e) => {
+             const h = e.target.parentElement.firstChild;
+             h.scrollTop = e.target.scrollTop;
+             h.scrollLeft = e.target.scrollLeft;
+          }}
           style={ui.textarea} 
-          spellCheck="false" 
-          disabled={isOutOfRuns}
+          spellCheck="false"
         />
+        <button onClick={execute} disabled={isRunning} style={ui.runBtn}>
+          {isRunning ? "..." : "RUN"}
+        </button>
       </div>
 
-      <div style={ui.footer}>
-        {isOutOfRuns ? (
-          <div style={ui.limitContainer}>
-            <span style={ui.resetMsg}>RESETS TOMORROW AT MIDNIGHT</span>
-            <button onClick={() => setIsPaystackOpen(true)} style={ui.proBtnLarge}>
-              ⚡ GO PRO NOW
-            </button>
-          </div>
-        ) : (
-          <button onClick={execute} disabled={isRunning} style={ui.runBtn}>
-            {isRunning ? "COMPILING..." : "RUN CODE"}
-          </button>
-        )}
-      </div>
-
-      <div style={ui.outputBox}>
-        <div style={ui.terminalHeader}>CONSOLE_OUTPUT</div>
-        <pre style={{ ...ui.pre, color: error ? '#f87171' : (isOutOfRuns ? '#fb923c' : '#22d3ee') }}>
-          {error || output || (isOutOfRuns ? "⚠️ Daily limit reached. Resets tomorrow." : "Waiting for code execution...")}
-        </pre>
+      {/* DASHBOARD (BOTTOM) */}
+      <div style={ui.dashboard}>
+        <div style={ui.dashHeader}>TERMINAL_DASHBOARD</div>
+        <div style={ui.outputArea}>
+          {error ? (
+            <pre style={ui.errorText}>⚠️ LOGIC_ERROR:{"\n"}{error}</pre>
+          ) : (
+            <pre style={ui.successText}>{output || "Ready for input..."}</pre>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-// PRESET STYLES (No external libraries needed)
 const ui = {
-  container: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#020617' },
-  header: { display: 'flex', justifyContent: 'space-between', padding: '12px 20px', backgroundColor: '#000', color: '#475569', fontSize: '10px', fontWeight: 'bold', borderBottom: '1px solid #1e293b' },
-  statusDot: { width: '8px', height: '8px', borderRadius: '50%', boxShadow: '0 0 10px currentColor' },
-  editorWrapper: { flex: 1, position: 'relative', display: 'flex', backgroundColor: '#020617' },
-  editorLabel: { position: 'absolute', top: '15px', right: '25px', fontSize: '10px', fontWeight: 'bold', color: '#1e293b', letterSpacing: '2px' },
-  textarea: { 
-    flex: 1, 
-    backgroundColor: 'transparent', 
-    color: '#e2e8f0', // Clean off-white/silver primary text
-    padding: '35px 25px', 
-    border: 'none', 
-    fontFamily: '"Fira Code", "JetBrains Mono", monospace', 
-    outline: 'none', 
-    fontSize: '15px', 
-    resize: 'none', 
-    lineHeight: '1.8',
-    caretColor: '#22d3ee', // Cyan glowing cursor
-    // This creates the "Attractive" effect:
-    textShadow: '0 0 1px rgba(34, 211, 238, 0.1)', 
-    backgroundImage: 'linear-gradient(rgba(34, 211, 238, 0.03) 1px, transparent 1px)',
-    backgroundSize: '100% 1.8em',
+  container: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#000' },
+  editorWrapper: { flex: 1, position: 'relative', overflow: 'hidden' },
+  highlighter: { 
+    position: 'absolute', inset: 0, padding: '25px', color: '#f8f8f2', 
+    fontFamily: 'monospace', fontSize: '15px', whiteSpace: 'pre-wrap', 
+    pointerEvents: 'none', overflow: 'hidden', lineHeight: '1.6' 
   },
-  footer: { padding: '15px 20px', borderTop: '1px solid #1e293b', backgroundColor: '#000' },
-  runBtn: { width: '100%', backgroundColor: '#22c55e', color: '#064e3b', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: '900', cursor: 'pointer', fontSize: '12px', boxShadow: '0 4px 15px rgba(34, 197, 94, 0.2)' },
-  limitContainer: { display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' },
-  resetMsg: { fontSize: '9px', color: '#ef4444', fontWeight: 'bold', letterSpacing: '1px' },
-  proBtnLarge: { width: '100%', backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: '900', cursor: 'pointer', fontSize: '12px' },
-  outputBox: { height: '180px', backgroundColor: '#000', padding: '20px', borderTop: '1px solid #1e293b', overflowY: 'auto' },
-  terminalHeader: { fontSize: '9px', color: '#334155', fontWeight: 'bold', marginBottom: '10px' },
-  pre: { margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.6' }
+  textarea: { 
+    width: '100%', height: '100%', backgroundColor: 'transparent', color: 'transparent', 
+    padding: '25px', border: 'none', fontFamily: 'monospace', fontSize: '15px', 
+    outline: 'none', resize: 'none', caretColor: '#fff', position: 'relative', 
+    zIndex: 1, lineHeight: '1.6', whiteSpace: 'pre-wrap' 
+  },
+  runBtn: { 
+    position: 'absolute', bottom: '15px', right: '15px', padding: '8px 20px', 
+    backgroundColor: '#22c55e', color: '#000', fontWeight: '900', border: 'none', 
+    borderRadius: '4px', cursor: 'pointer', zIndex: 10, fontSize: '11px' 
+  },
+  dashboard: { height: '160px', backgroundColor: '#020617', borderTop: '2px solid #1e293b' },
+  dashHeader: { padding: '8px 20px', fontSize: '9px', color: '#475569', fontWeight: 'bold' },
+  outputArea: { padding: '15px 20px', height: '120px', overflowY: 'auto' },
+  errorText: { margin: 0, color: '#ff5555', fontSize: '13px', fontFamily: 'monospace' },
+  successText: { margin: 0, color: '#50fa7b', fontSize: '13px', fontFamily: 'monospace' }
 };
 
 export default CodeEditor;
