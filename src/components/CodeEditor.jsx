@@ -10,18 +10,19 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
   const execute = async () => {
     const currentRuns = user?.dailyExecutions || 0;
     
-    // HARD LIMIT CHECK
+    // 1. HARD LIMIT CHECK (Local check is instant)
     if (!user?.isPro && currentRuns >= 12) {
       setError("⛔ LIMIT REACHED: 12/12 runs used.");
-      setIsPaystackOpen(true); // Automatically open the payment window
+      setIsPaystackOpen(true);
       return; 
     }
 
     setIsRunning(true);
-    setOutput("SYSTEM: Compiling...");
+    setOutput("SYSTEM: Executing..."); // Changed "Compiling" to "Executing" (psychologically faster)
     setError("");
 
     try {
+      // 2. TRIGGER API (The only thing the user should wait for)
       const response = await fetch("https://emkc.org/api/v2/piston/execute", {
         method: "POST",
         body: JSON.stringify({
@@ -34,16 +35,21 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
       const data = await response.json();
       const nextRuns = currentRuns + 1;
 
-      // Update Firebase
-      await updateUserProfile(user.uid, { dailyExecutions: nextRuns });
-      
-      // Update local state instantly
+      // 3. INSTANT LOCAL UPDATE
+      // We update the screen immediately so the user sees "11/12" change right away
       setUser(prev => ({ ...prev, dailyExecutions: nextRuns }));
 
+      // 4. BACKGROUND FIREBASE SYNC (No 'await'!)
+      // We fire this off to the cloud but don't wait for a response.
+      updateUserProfile(user.uid, { dailyExecutions: nextRuns }).catch(e => {
+        console.error("Silent Sync Failed:", e);
+      });
+
+      // 5. DISPLAY RESULTS
       if (data.run.stderr) {
         setError(data.run.stderr);
       } else {
-        setOutput(data.run.output);
+        setOutput(data.run.output || "Program executed successfully (no output).");
       }
     } catch (err) {
       setError("Execution failed. Check your connection.");
@@ -60,6 +66,7 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
         value={code}
         onChange={(e) => setCode(e.target.value)}
         style={editorStyles.textarea}
+        spellCheck="false"
       />
       
       <div style={editorStyles.footer}>
@@ -73,7 +80,11 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
       </div>
 
       <div style={editorStyles.outputBox}>
-        {error ? <pre style={{color: '#ef4444'}}>{error}</pre> : <pre>{output}</pre>}
+        {error ? (
+          <pre style={{color: '#ef4444', whiteSpace: 'pre-wrap'}}>{error}</pre>
+        ) : (
+          <pre style={{whiteSpace: 'pre-wrap', color: '#cbd5e1'}}>{output}</pre>
+        )}
       </div>
     </div>
   );
@@ -81,11 +92,11 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
 
 const editorStyles = {
   container: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#000' },
-  textarea: { flex: 1, backgroundColor: '#000', color: '#22c55e', padding: '20px', border: 'none', fontFamily: 'monospace', resize: 'none', outline: 'none' },
-  footer: { padding: '10px', borderTop: '1px solid #1e293b', display: 'flex', justifyContent: 'flex-end' },
-  runBtn: { backgroundColor: '#22c55e', color: '#000', border: 'none', padding: '8px 24px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' },
-  upgradeBtn: { backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '8px 24px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' },
-  outputBox: { height: '150px', backgroundColor: '#020617', borderTop: '1px solid #1e293b', padding: '15px', overflowY: 'auto', fontSize: '13px' }
+  textarea: { flex: 1, backgroundColor: '#000', color: '#22c55e', padding: '20px', border: 'none', fontFamily: 'monospace', resize: 'none', outline: 'none', fontSize: '14px', lineHeight: '1.5' },
+  footer: { padding: '10px', borderTop: '1px solid #1e293b', display: 'flex', justifyContent: 'flex-end', backgroundColor: '#000' },
+  runBtn: { backgroundColor: '#22c55e', color: '#000', border: 'none', padding: '8px 24px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' },
+  upgradeBtn: { backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '8px 24px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', animation: 'pulse 2s infinite' },
+  outputBox: { height: '150px', backgroundColor: '#020617', borderTop: '1px solid #1e293b', padding: '15px', overflowY: 'auto', fontSize: '13px', fontFamily: 'monospace' }
 };
 
 export default CodeEditor;
