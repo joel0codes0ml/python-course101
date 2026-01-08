@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js"; // Restored Buttons
 import Mascot from "./components/Mascot.jsx";
 import Login from "./Login.jsx";
 import CodeEditor from "./components/CodeEditor.jsx";
 import Leaderboard from "./components/Leaderboard.jsx";
-import { onAuthChange, getUserProfile, logout, subscribeLeaderboard } from "./firebase";
+import { onAuthChange, getUserProfile, updateUserProfile, logout, subscribeLeaderboard } from "./firebase";
 
 // CURRICULUM IMPORTS
 import { pythonLessons } from "./courses/python.js";
@@ -83,10 +83,7 @@ export default function App() {
 
   const lessons = currentLanguage.lessons || [];
   const current = lessons[currentLessonIndex] || { title: "End of Path", content: "Path Complete!" };
-  
-  // Calculate runs remaining
-  const runsUsed = user?.dailyExecutions || 0;
-  const runsLeft = Math.max(0, RUN_LIMIT - runsUsed);
+  const runsLeft = Math.max(0, RUN_LIMIT - (user?.dailyExecutions || 0));
 
   return (
     <PayPalScriptProvider options={{ "client-id": "test", currency: "USD" }}>
@@ -117,7 +114,6 @@ export default function App() {
         </nav>
 
         <div style={styles.workspace}>
-          {/* SIDEBAR */}
           <aside style={styles.sidebar}>
             <div style={styles.curriculumHeader}>CURRICULUM</div>
             <div style={styles.langList}>
@@ -131,33 +127,28 @@ export default function App() {
                 </button>
               ))}
             </div>
-            
             <div style={{marginTop: 'auto', borderTop: '1px solid #1e293b', padding: '10px'}}>
                 <div style={{fontSize: '9px', color: '#475569', fontWeight: 'bold', marginBottom: '10px'}}>LEADERBOARD</div>
                 <Leaderboard data={leaderboard.slice(0, 5)} compact={true} />
             </div>
           </aside>
 
-          {/* LESSON CONTENT */}
           <main style={styles.lessonPanel}>
             <div style={styles.moduleTag}>MODULE {currentLessonIndex + 1}</div>
             <h1 style={styles.lessonTitle}>{current.title}</h1>
             <p style={styles.lessonText}>{current.content}</p>
-            
             <div style={styles.solutionSection}>
                 <h4 style={styles.solLabel}>EXPECTED OUTPUT</h4>
                 <div style={styles.solCode}>{current.expectedOutput}</div>
                 <h4 style={styles.solLabel}>SOLUTION (TYPE THIS OUT)</h4>
                 <pre style={styles.solCode}>{current.starterCode}</pre>
             </div>
-            
             <div style={styles.navBtns}>
               <button onClick={() => setCurrentLessonIndex(p => Math.max(0, p-1))} style={styles.btnPrev}>PREV</button>
               <button onClick={() => setCurrentLessonIndex(p => Math.min(lessons.length-1, p+1))} style={styles.btnNext}>NEXT</button>
             </div>
           </main>
 
-          {/* CODE EDITOR */}
           <section style={styles.editorPanel}>
             <CodeEditor 
               user={user} 
@@ -169,6 +160,40 @@ export default function App() {
             />
           </section>
         </div>
+
+        {/* PAYMENT MODAL (PAYPAL & DEBIT) */}
+        {isPaystackOpen && (
+          <div style={styles.modalOverlay} onClick={() => setIsPaystackOpen(false)}>
+            <div style={styles.payModal} onClick={e => e.stopPropagation()}>
+               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
+                  <h3 style={{margin: 0}}>🚀 UPGRADE TO PRO</h3>
+                  <button onClick={() => setIsPaystackOpen(false)} style={styles.modalCloseX}>✕</button>
+               </div>
+               <p style={{fontSize: '13px', color: '#94a3b8', marginBottom: '20px'}}>
+                 Unlock unlimited code executions, high-tier rankings, and premium course content.
+               </p>
+               
+               <div style={{maxHeight: '400px', overflowY: 'auto'}}>
+                 <PayPalButtons 
+                    style={{ layout: "vertical", shape: "rect" }}
+                    createOrder={(data, actions) => {
+                      return actions.order.create({
+                        purchase_units: [{ amount: { value: "9.99" } }],
+                      });
+                    }}
+                    onApprove={async (data, actions) => {
+                      const details = await actions.order.capture();
+                      const updates = { isPro: true };
+                      setUser(prev => ({ ...prev, ...updates }));
+                      await updateUserProfile(user.uid, updates);
+                      setIsPaystackOpen(false);
+                      alert(`Welcome to Pro, ${details.payer.name.given_name}!`);
+                    }}
+                 />
+               </div>
+            </div>
+          </div>
+        )}
 
         {/* RANKINGS MODAL */}
         {isLeaderboardOpen && (
@@ -217,7 +242,7 @@ const styles = {
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#020617', color: '#fff', overflow: 'hidden', fontFamily: 'Inter, sans-serif' },
   nav: { height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', backgroundColor: '#000', borderBottom: '1px solid #1e293b' },
   logo: { marginLeft: '12px', fontWeight: '900', fontStyle: 'italic', fontSize: '18px', letterSpacing: '1px' },
-  upgradeBtn: { marginLeft: '20px', backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '6px 14px', borderRadius: '4px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', transition: '0.2s' },
+  upgradeBtn: { marginLeft: '20px', backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '6px 14px', borderRadius: '4px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' },
   rankLink: { marginLeft: '20px', background: 'none', border: 'none', color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' },
   streakBadge: { marginLeft: '15px', color: '#fb923c', fontSize: '11px', fontWeight: '900' },
   navRight: { display: 'flex', alignItems: 'center', gap: '15px' },
@@ -225,26 +250,29 @@ const styles = {
   syncDot: { width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', boxShadow: '0 0 8px #22c55e' },
   runsText: { color: '#475569', fontSize: '11px', fontWeight: 'bold' },
   userBadge: { color: '#22c55e', fontSize: '12px', fontWeight: 'bold' },
-  logoutBtn: { background: 'none', border: 'none', color: '#475569', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' },
+  logoutBtn: { background: 'none', border: 'none', color: '#475569', fontSize: '11px', cursor: 'pointer' },
   workspace: { display: 'flex', flex: 1, overflow: 'hidden' },
   sidebar: { width: '220px', backgroundColor: '#000', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column' },
-  curriculumHeader: { padding: '24px 16px 12px', fontSize: '10px', fontWeight: '900', color: '#475569', letterSpacing: '1px' },
+  curriculumHeader: { padding: '24px 16px 12px', fontSize: '10px', fontWeight: '900', color: '#475569' },
   langList: { flex: 1, overflowY: 'auto' },
-  langBtn: { width: '100%', textAlign: 'left', padding: '14px 20px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '800', borderLeft: '3px solid transparent' },
+  langBtn: { width: '100%', textAlign: 'left', padding: '14px 20px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '800' },
   lessonPanel: { flex: '1 1 45%', padding: '40px', overflowY: 'auto', borderRight: '1px solid #1e293b', backgroundColor: '#020617' },
   editorPanel: { flex: '1 1 55%', backgroundColor: '#000' },
-  moduleTag: { color: '#22c55e', fontSize: '10px', fontWeight: '900', letterSpacing: '1px' },
+  moduleTag: { color: '#22c55e', fontSize: '10px', fontWeight: '900' },
   lessonTitle: { fontSize: '32px', fontWeight: '900', margin: '10px 0 20px' },
   lessonText: { color: '#94a3b8', lineHeight: '1.8', fontSize: '15px' },
   solutionSection: { marginTop: '40px', paddingTop: '20px' },
-  solLabel: { fontSize: '10px', color: '#475569', fontWeight: '900', marginBottom: '10px', letterSpacing: '0.5px' },
+  solLabel: { fontSize: '10px', color: '#475569', fontWeight: '900', marginBottom: '10px' },
   solCode: { display: 'block', padding: '20px', background: '#0a0f1d', borderRadius: '8px', color: '#64748b', fontSize: '13px', marginBottom: '25px', fontFamily: 'monospace', border: '1px solid #1e293b' },
   navBtns: { display: 'flex', gap: '15px', marginTop: '40px' },
-  btnPrev: { flex: 1, padding: '14px', background: '#1e293b', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' },
+  btnPrev: { flex: 1, padding: '14px', background: '#1e293b', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer' },
   btnNext: { flex: 1, padding: '14px', background: '#22c55e', border: 'none', color: '#000', fontWeight: '900', borderRadius: '6px', cursor: 'pointer' },
-  loading: { height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020617', color: '#ef4444', fontFamily: 'monospace' },
+  loading: { height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020617', color: '#ef4444' },
+  
+  // MODALS
   modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
   leaderboardModal: { backgroundColor: '#000', width: '95%', maxWidth: '1300px', height: '85vh', borderRadius: '12px', border: '1px solid #1e293b', padding: '30px', display: 'flex', flexDirection: 'column' },
+  payModal: { backgroundColor: '#0a0f1d', width: '100%', maxWidth: '450px', borderRadius: '12px', border: '1px solid #1e293b', padding: '30px' },
   modalCloseX: { background: 'none', border: 'none', color: '#475569', fontSize: '24px', cursor: 'pointer' },
   tierGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', flex: 1, minHeight: 0 },
   tierCol: { backgroundColor: '#0a0f1d', borderRadius: '8px', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid #1e293b' },
