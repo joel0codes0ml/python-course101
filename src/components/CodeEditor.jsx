@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
+import { updateUserProfile } from "../firebase"; // Ensure this is imported
 
-// ADD "default" HERE - This is what the error is complaining about
-export default function CodeEditor({ language, version, starterCode, expectedOutput, solution }) {
+export default function CodeEditor({ user, setUser, language, version, starterCode, expectedOutput }) {
   const [code, setCode] = useState(starterCode);
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
@@ -15,6 +15,14 @@ export default function CodeEditor({ language, version, starterCode, expectedOut
   }, [starterCode]);
 
   const execute = async () => {
+    // 🔒 THE GATEKEEPER LOGIC
+    const currentRuns = user?.dailyExecutions || 0;
+    
+    if (!user?.isPro && currentRuns >= 12) {
+      setError("LIMIT REACHED: 12/12 runs used. Upgrade to Pro to continue!");
+      return;
+    }
+
     setIsRunning(true);
     setOutput("SYSTEM: Initializing...");
     setError("");
@@ -34,7 +42,6 @@ export default function CodeEditor({ language, version, starterCode, expectedOut
       const run = data.run;
       const compile = data.compile;
 
-      // Check for compilation errors (C/C++) or runtime errors (Python)
       if (compile?.stderr) {
         setError(compile.stderr);
       } else if (run?.stderr) {
@@ -44,7 +51,11 @@ export default function CodeEditor({ language, version, starterCode, expectedOut
         const cleanOutput = runOutput.trim();
         const cleanExpected = expectedOutput ? expectedOutput.trim() : null;
 
-        // VALIDATION LOGIC
+        // ✅ UPDATE FIREBASE COUNT AFTER RUN
+        const nextRuns = currentRuns + 1;
+        await updateUserProfile(user.uid, { dailyExecutions: nextRuns });
+        setUser(prev => ({ ...prev, dailyExecutions: nextRuns }));
+
         if (cleanExpected && cleanOutput !== cleanExpected) {
           setOutput(runOutput);
           setError("FAIL: Output does not match mission goal.");
@@ -74,15 +85,21 @@ export default function CodeEditor({ language, version, starterCode, expectedOut
 
       <div style={{ height: '40%', display: 'flex', flexDirection: 'column', backgroundColor: '#050505', padding: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <span style={{ fontSize: '10px', color: '#475569', fontWeight: 'bold' }}>CONSOLE_V1.0</span>
+          <span style={{ fontSize: '10px', color: '#475569', fontWeight: 'bold' }}>
+            {!user?.isPro ? `RUNS: ${user?.dailyExecutions || 0}/12` : "PRO UNLIMITED"}
+          </span>
           <button 
             onClick={execute} 
             disabled={isRunning}
-            style={{ backgroundColor: '#ef4444', color: '#fff', padding: '8px 20px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+            style={{ 
+              backgroundColor: (!user?.isPro && (user?.dailyExecutions || 0) >= 12) ? '#334155' : '#ef4444', 
+              color: '#fff', padding: '8px 20px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 'bold' 
+            }}
           >
             {isRunning ? "RUNNING..." : "RUN CODE ▶"}
           </button>
         </div>
+        {/* Output area stays the same */}
         <div style={{ flex: 1, overflowY: 'auto', background: '#000', padding: '10px', borderRadius: '4px', border: '1px solid #1e293b' }}>
           {error ? (
             <pre style={{ color: '#ef4444', fontSize: '12px', margin: 0, whiteSpace: 'pre-wrap' }}>{error}</pre>
