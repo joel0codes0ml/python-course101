@@ -3,9 +3,8 @@ import Mascot from "./components/Mascot.jsx";
 import CodeEditor from "./components/CodeEditor.jsx";
 import Login from "./Login.jsx";
 import { onAuthChange, getUserProfile, updateUserProfile } from "./firebase";
-import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 
-// Course Data Imports
+// Keep all your course data imports
 import { pythonLessons } from "./courses/python.js";
 import { clLessons } from "./courses/clessons.js";
 import { cppLessons } from "./courses/cpplessons.js";
@@ -31,7 +30,9 @@ export default function App() {
   const [initializing, setInitializing] = useState(true);
   const [currentLanguage, setCurrentLanguage] = useState(languages[0]);
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
-  const [isPaypalOpen, setIsPaypalOpen] = useState(false);
+  const [isPaystackOpen, setIsPaystackOpen] = useState(false); // Replaced PayPal state
+
+  const RUN_LIMIT = 12; // Your limit
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (firebaseUser) => {
@@ -46,6 +47,14 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // OPTION B: Manual Activation
+  const handleActivatePro = async () => {
+    await updateUserProfile(user.uid, { isPro: true });
+    setUser(prev => ({ ...prev, isPro: true }));
+    setIsPaystackOpen(false);
+    alert("Welcome to Zenin Pro! Your unlimited access is now active.");
+  };
+
   if (initializing) return <div style={styles.loading}>SYSTEM_INITIALIZING...</div>;
   if (!user) return <Login onLogin={setUser} />;
 
@@ -53,143 +62,110 @@ export default function App() {
   const current = lessons[currentLessonIndex] || { title: "End of Path", content: "Select a lesson to begin." };
 
   return (
-    <PayPalScriptProvider options={{ 
-      "client-id": "AdCbJRCE9syXhIQUg7dpVLTFtiqlqhXIrLDx3F_ynEV2uEi4Zj9yMjTj_xln6WqafD2WkPiPMqsFs7j5", 
-      currency: "USD",
-      intent: "capture",
-      components: "buttons",
-      // ⚡ FORCES THE CARD BUTTON (MASTERCARD/VISA) TO LOAD
-      "enable-funding": "card",
-      "disable-funding": "paylater,venmo"
-    }}>
-      <div style={styles.appContainer}>
-        
-        {/* HEADER */}
-        <nav style={styles.nav}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <Mascot />
-            <span style={styles.logo}>ZENIN<span style={{ color: '#ef4444' }}>LABS</span></span>
-            
-            {/* GO PRO BUTTON */}
-            {!user?.isPro ? (
-              <button 
-                onClick={() => setIsPaypalOpen(true)} 
-                style={styles.upgradeBtn}
-              >
-                ⚡ GO PRO
-              </button>
-            ) : (
-              <span style={styles.proBadge}>👑 PRO MEMBER</span>
-            )}
-          </div>
-
-          <div style={styles.navRight}>
-              {!user?.isPro && (
-                <span style={styles.runsText}>
-                  {8 - (user?.dailyExecutions || 0)}/8 RUNS LEFT
-                </span>
-              )}
-              <span style={styles.userBadge}>
-                {user?.username?.toUpperCase() || 'NINJA'} | XP {user?.xp || 0}
-              </span>
-          </div>
-        </nav>
-
-        {/* MAIN BODY */}
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          <aside style={styles.sidebar}>
-            <div style={styles.curriculumHeader}>CURRICULUM</div>
-            {languages.map(lang => (
-              <button 
-                key={lang.name}
-                onClick={() => { setCurrentLanguage(lang); setCurrentLessonIndex(0); }}
-                style={{ ...styles.langBtn, color: lang.name === currentLanguage.name ? '#ef4444' : '#94a3b8' }}
-              >
-                {lang.name} {lang.name === currentLanguage.name && "•"}
-              </button>
-            ))}
-          </aside>
-
-          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-            <main style={styles.lessonContainer}>
-              <div style={styles.moduleTag}>MODULE {currentLessonIndex + 1}</div>
-              <h1 style={styles.lessonTitle}>{current.title}</h1>
-              <div style={styles.contentBox}>
-                <p style={styles.contentText}>{current.content}</p>
-              </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={() => setCurrentLessonIndex(p => Math.max(0, p-1))} style={styles.btnPrev}>PREVIOUS</button>
-                <button onClick={() => setCurrentLessonIndex(p => Math.min(lessons.length-1, p+1))} style={styles.btnNext}>NEXT LESSON</button>
-              </div>
-            </main>
-
-            <section style={{ flex: '1 1 50%', backgroundColor: '#000', position: 'relative' }}>
-              <CodeEditor 
-                user={user}
-                setUser={setUser}
-                language={currentLanguage.id}
-                starterCode={current.starterCode}
-                expectedOutput={current.expectedOutput}
-              />
-            </section>
-          </div>
+    <div style={styles.appContainer}>
+      {/* HEADER */}
+      <nav style={styles.nav}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <Mascot />
+          <span style={styles.logo}>ZENIN<span style={{ color: '#ef4444' }}>LABS</span></span>
+          
+          {!user?.isPro ? (
+            <button onClick={() => setIsPaystackOpen(true)} style={styles.upgradeBtn}>
+              ⚡ GO PRO
+            </button>
+          ) : (
+            <span style={styles.proBadge}>👑 PRO MEMBER</span>
+          )}
         </div>
 
-        {/* PAYMENT MODAL (SUPPORTS PAYPAL + MASTERCARD/VISA) */}
-        {isPaypalOpen && (
-          <div style={styles.modalOverlay}>
-            <div style={styles.modalCard}>
-              <div style={{ marginBottom: '24px' }}>
-                <h2 style={{ color: '#fff', margin: '0 0 10px 0' }}>Unlock Zenin Pro</h2>
-                <p style={{ color: '#94a3b8', fontSize: '14px', margin: 0 }}>
-                  Enter Zenin Pro with Mastercard, Visa, or PayPal.
-                </p>
-              </div>
+        <div style={styles.navRight}>
+            {!user?.isPro && (
+              <span style={styles.runsText}>
+                {Math.max(0, RUN_LIMIT - (user?.dailyExecutions || 0))}/{RUN_LIMIT} RUNS LEFT
+              </span>
+            )}
+            <span style={styles.userBadge}>
+              {user?.username?.toUpperCase() || 'NINJA'} | XP {user?.xp || 0}
+            </span>
+        </div>
+      </nav>
 
-              <div style={{ minHeight: '150px' }}>
-                <PayPalButtons 
-                  style={{ 
-                    layout: "vertical", 
-                    shape: "rect", 
-                    color: "gold",
-                    label: "pay" 
-                  }}
-                  forceReRender={[isPaypalOpen]} 
-                  createOrder={(data, actions) => {
-                    return actions.order.create({
-                      purchase_units: [{
-                        description: "ZeninLabs Pro Membership",
-                        amount: { 
-                          currency_code: "USD",
-                          value: "2.50" 
-                        }
-                      }]
-                    });
-                  }}
-                  onApprove={async (data, actions) => {
-                    const details = await actions.order.capture();
-                    // ✅ UPDATES FIREBASE AND UI
-                    await updateUserProfile(user.uid, { isPro: true, paymentId: details.id });
-                    setUser(prev => ({ ...prev, isPro: true }));
-                    setIsPaypalOpen(false);
-                    alert("Welcome to Zenin Pro, Ninja!");
-                  }}
-                  onError={(err) => {
-                    console.error("Payment error:", err);
-                    alert("Payment could not be processed. Please check your card details.");
-                  }}
-                />
-              </div>
+      {/* MAIN BODY */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <aside style={styles.sidebar}>
+          <div style={styles.curriculumHeader}>CURRICULUM</div>
+          {languages.map(lang => (
+            <button 
+              key={lang.name}
+              onClick={() => { setCurrentLanguage(lang); setCurrentLessonIndex(0); }}
+              style={{ ...styles.langBtn, color: lang.name === currentLanguage.name ? '#ef4444' : '#94a3b8' }}
+            >
+              {lang.name} {lang.name === currentLanguage.name && "•"}
+            </button>
+          ))}
+        </aside>
 
-              <button onClick={() => setIsPaypalOpen(false)} style={styles.modalClose}>MAYBE LATER</button>
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          <main style={styles.lessonContainer}>
+            <div style={styles.moduleTag}>MODULE {currentLessonIndex + 1}</div>
+            <h1 style={styles.lessonTitle}>{current.title}</h1>
+            <div style={styles.contentBox}>
+              <p style={styles.contentText}>{current.content}</p>
             </div>
-          </div>
-        )}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setCurrentLessonIndex(p => Math.max(0, p-1))} style={styles.btnPrev}>PREVIOUS</button>
+              <button onClick={() => setCurrentLessonIndex(p => Math.min(lessons.length-1, p+1))} style={styles.btnNext}>NEXT LESSON</button>
+            </div>
+          </main>
+
+          <section style={{ flex: '1 1 50%', backgroundColor: '#000', position: 'relative' }}>
+            <CodeEditor 
+              user={user}
+              setUser={setUser}
+              language={currentLanguage.id}
+              starterCode={current.starterCode}
+              expectedOutput={current.expectedOutput}
+            />
+          </section>
+        </div>
       </div>
-    </PayPalScriptProvider>
+
+      {/* PAYSTACK MODAL (Replaces PayPal) */}
+      {isPaystackOpen && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalCard}>
+            <div style={{ marginBottom: '24px' }}>
+              <h2 style={{ color: '#fff' }}>Unlock Zenin Pro</h2>
+              <p style={{ color: '#94a3b8', fontSize: '14px' }}>
+                Pay 500 KES via M-Pesa to get unlimited code executions.
+              </p>
+            </div>
+
+            <a 
+              href="https://paystack.shop/pay/zdrj1fu6qq" 
+              target="_blank" 
+              rel="noreferrer"
+              style={styles.paystackLink}
+            >
+              PAY WITH M-PESA / CARD
+            </a>
+
+            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #1e293b' }}>
+                <p style={{ fontSize: '11px', color: '#475569' }}>Already paid?</p>
+                <button onClick={handleActivatePro} style={styles.verifyBtn}>
+                  ACTIVATE PRO NOW
+                </button>
+            </div>
+
+            <button onClick={() => setIsPaystackOpen(false)} style={styles.modalClose}>MAYBE LATER</button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
+// STYLES (Kept your original styles and added Paystack specific ones)
 const styles = {
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#020617', color: '#fff', overflow: 'hidden', margin: 0, padding: 0, fontFamily: 'sans-serif' },
   nav: { height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', backgroundColor: '#000', borderBottom: '1px solid #1e293b', flexShrink: 0 },
@@ -212,5 +188,7 @@ const styles = {
   loading: { height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020617', color: '#ef4444', fontFamily: 'monospace' },
   modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 },
   modalCard: { background: '#020617', border: '1px solid #1e293b', padding: '32px', borderRadius: '20px', width: '340px', textAlign: 'center' },
-  modalClose: { background: 'none', border: 'none', color: '#475569', marginTop: '20px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }
+  modalClose: { background: 'none', border: 'none', color: '#475569', marginTop: '20px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' },
+  paystackLink: { display: 'block', backgroundColor: '#22c55e', color: '#000', padding: '14px', borderRadius: '8px', fontWeight: 'bold', textDecoration: 'none' },
+  verifyBtn: { backgroundColor: 'transparent', color: '#22c55e', border: '1px solid #22c55e', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', marginTop: '10px' }
 };
