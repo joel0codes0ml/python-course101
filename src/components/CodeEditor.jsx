@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { updateUserProfile } from "../firebase";
 
 const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, expectedOutput }) => {
-  const [code, setCode] = useState(starterCode || "");
+  // 1. Set to empty string "" instead of starterCode so the block is empty
+  const [code, setCode] = useState(""); 
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState("");
 
-  // CHAPTER CLOSER: This ensures the textarea clears/resets when the lesson changes
+  // 2. Clear everything whenever the lesson changes
   useEffect(() => {
-    setCode(starterCode || "");
+    setCode(""); // Wipes the textarea
     setOutput("");
     setError("");
   }, [starterCode, language]);
@@ -51,8 +52,13 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
         setError(data.run.stderr);
       } else {
         const result = data.run.output || "Program executed successfully.";
-        // Optional: Check if the output matches expectedOutput here if you want to show Success
-        setOutput(result);
+        
+        // Success check logic
+        if (expectedOutput && result.trim() === expectedOutput.trim()) {
+           setOutput(`${result}\n\n✨ SUCCESS! +20 XP`);
+        } else {
+           setOutput(result);
+        }
       }
     } catch (err) {
       setError("Execution failed. Check your connection.");
@@ -65,9 +71,11 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
 
   return (
     <div style={editorStyles.container}>
+      {/* This textarea will now start empty every time */}
       <textarea
         value={code}
         onChange={(e) => setCode(e.target.value)}
+        placeholder="// Write your code here..."
         style={editorStyles.textarea}
         spellCheck="false"
       />
