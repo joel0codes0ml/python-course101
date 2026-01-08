@@ -36,28 +36,43 @@ export default function App() {
   const RUN_LIMIT = 12;
 
   // PERSISTENCE & LEADERBOARD SYNC
-  useEffect(() => {
-    const unsubscribeAuth = onAuthChange(async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const profile = await getUserProfile(firebaseUser.uid);
-          setUser({ uid: firebaseUser.uid, ...profile });
-          
-          const unsubscribeLeader = subscribeLeaderboard((data) => {
-            setLeaderboard(data);
-          });
-          return () => unsubscribeLeader();
-        } catch (err) {
-          console.error("Session recovery failed:", err);
-          setUser({ uid: firebaseUser.uid, username: "NINJA", xp: 0 });
-        }
-      } else {
-        setUser(null);
-      }
+ useEffect(() => {
+  // EMERGENCY RECOVERY: If Firebase hangs for 3 seconds, force show the UI
+  const recoveryTimeout = setTimeout(() => {
+    if (initializing) {
+      console.warn("Firebase taking too long... forcing UI");
       setInitializing(false);
-    });
-    return () => unsubscribeAuth();
-  }, []);
+    }
+  }, 3000);
+
+  const unsubscribeAuth = onAuthChange(async (firebaseUser) => {
+    if (firebaseUser) {
+      try {
+        const profile = await getUserProfile(firebaseUser.uid);
+        setUser({ uid: firebaseUser.uid, ...profile });
+        
+        // Wrap leaderboard in try/catch so it can't crash the whole app
+        try {
+          const unsubscribeLeader = subscribeLeaderboard((data) => setLeaderboard(data));
+          return () => unsubscribeLeader();
+        } catch (e) { console.error("Leaderboard sync failed", e); }
+
+      } catch (err) {
+        console.error("Profile recovery failed:", err);
+        setUser({ uid: firebaseUser.uid, username: "NINJA", xp: 0 });
+      }
+    } else {
+      setUser(null);
+    }
+    clearTimeout(recoveryTimeout);
+    setInitializing(false);
+  });
+
+  return () => {
+    unsubscribeAuth();
+    clearTimeout(recoveryTimeout);
+  };
+}, []);
 
   const handleActivatePro = async () => {
     await updateUserProfile(user.uid, { isPro: true });
