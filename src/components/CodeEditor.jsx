@@ -2,22 +2,71 @@ import React, { useState, useEffect } from 'react';
 import { updateUserProfile } from "../firebase";
 
 const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, expectedOutput }) => {
-  // 1. Set to empty string "" instead of starterCode so the block is empty
   const [code, setCode] = useState(""); 
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState("");
 
-  // 2. Clear everything whenever the lesson changes
   useEffect(() => {
-    setCode(""); // Wipes the textarea
+    setCode(""); 
     setOutput("");
     setError("");
   }, [starterCode, language]);
 
+  const handleKeyDown = (e) => {
+    const { selectionStart, selectionEnd, value } = e.target;
+
+    // 1. HANDLE TAB
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const newCode = value.substring(0, selectionStart) + "    " + value.substring(selectionEnd);
+      setCode(newCode);
+      setTimeout(() => {
+        e.target.selectionStart = e.target.selectionEnd = selectionStart + 4;
+      }, 0);
+    }
+
+    // 2. HANDLE AUTO-INDENT & CARRIAGE RETURN
+    if (e.key === 'Enter') {
+      const lines = value.substring(0, selectionStart).split('\n');
+      const currentLine = lines[lines.length - 1];
+      const indentMatch = currentLine.match(/^\s*/);
+      const currentIndentation = indentMatch ? indentMatch[0] : "";
+      
+      // Add extra indent if line ends in colon or brace
+      let extraIndent = "";
+      if (currentLine.trim().endsWith(':') || currentLine.trim().endsWith('{')) {
+        extraIndent = "    ";
+      }
+
+      e.preventDefault();
+      const newCode = value.substring(0, selectionStart) + "\n" + currentIndentation + extraIndent + value.substring(selectionEnd);
+      setCode(newCode);
+
+      setTimeout(() => {
+        e.target.selectionStart = e.target.selectionEnd = selectionStart + 1 + currentIndentation.length + extraIndent.length;
+      }, 0);
+    }
+
+    // 3. HANDLE BRACKET PAIRING
+    const pairs = { '(': ')', '[': ']', '{': '{', '"': '"', "'": "'" };
+    if (pairs[e.key]) {
+      e.preventDefault();
+      const newCode = value.substring(0, selectionStart) + e.key + pairs[e.key] + value.substring(selectionEnd);
+      setCode(newCode);
+      setTimeout(() => {
+        e.target.selectionStart = e.target.selectionEnd = selectionStart + 1;
+      }, 0);
+    }
+  };
+
   const execute = async () => {
+    if (!code.trim()) {
+        setError("⚠️ Editor is empty! Write some code first.");
+        return;
+    }
+
     const currentRuns = user?.dailyExecutions || 0;
-    
     if (!user?.isPro && currentRuns >= 12) {
       setError("⛔ LIMIT REACHED: 12/12 runs used.");
       setIsPaystackOpen(true);
@@ -41,19 +90,14 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
 
       const data = await response.json();
       const nextRuns = currentRuns + 1;
-
+      
       setUser(prev => ({ ...prev, dailyExecutions: nextRuns }));
-
-      updateUserProfile(user.uid, { dailyExecutions: nextRuns }).catch(e => {
-        console.error("Silent Sync Failed:", e);
-      });
+      updateUserProfile(user.uid, { dailyExecutions: nextRuns }).catch(() => {});
 
       if (data.run.stderr) {
         setError(data.run.stderr);
       } else {
-        const result = data.run.output || "Program executed successfully.";
-        
-        // Success check logic
+        const result = data.run.output || "Done (No output).";
         if (expectedOutput && result.trim() === expectedOutput.trim()) {
            setOutput(`${result}\n\n✨ SUCCESS! +20 XP`);
         } else {
@@ -61,53 +105,53 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
         }
       }
     } catch (err) {
-      setError("Execution failed. Check your connection.");
+      setError("Connection error. Is the Piston API up?");
     } finally {
       setIsRunning(false);
     }
   };
 
-  const isLimitHit = !user?.isPro && (user?.dailyExecutions || 0) >= 12;
-
   return (
-    <div style={editorStyles.container}>
-      {/* This textarea will now start empty every time */}
+    <div style={ui.container}>
       <textarea
         value={code}
         onChange={(e) => setCode(e.target.value)}
-        placeholder="// Write your code here..."
-        style={editorStyles.textarea}
+        onKeyDown={handleKeyDown}
+        placeholder="// Solution goes here..."
+        style={ui.textarea}
         spellCheck="false"
       />
       
-      <div style={editorStyles.footer}>
+      <div style={ui.footer}>
         <button 
-          onClick={isLimitHit ? () => setIsPaystackOpen(true) : execute} 
+          onClick={!user?.isPro && (user?.dailyExecutions >= 12) ? () => setIsPaystackOpen(true) : execute} 
           disabled={isRunning}
-          style={isLimitHit ? editorStyles.upgradeBtn : editorStyles.runBtn}
+          style={!user?.isPro && (user?.dailyExecutions >= 12) ? ui.upgradeBtn : ui.runBtn}
         >
-          {isRunning ? "RUNNING..." : isLimitHit ? "🚀 UNLOCK PRO" : "RUN CODE"}
+          {isRunning ? "..." : !user?.isPro && (user?.dailyExecutions >= 12) ? "🚀 UNLOCK PRO" : "RUN CODE"}
         </button>
       </div>
 
-      <div style={editorStyles.outputBox}>
-        {error ? (
-          <pre style={{color: '#ef4444', whiteSpace: 'pre-wrap'}}>{error}</pre>
-        ) : (
-          <pre style={{whiteSpace: 'pre-wrap', color: '#cbd5e1'}}>{output}</pre>
-        )}
+      <div style={ui.outputBox}>
+        <pre style={{color: error ? '#ef4444' : '#22c55e', whiteSpace: 'pre-wrap', margin: 0}}>
+          {error || output || "Terminal Ready"}
+        </pre>
       </div>
     </div>
   );
 };
 
-const editorStyles = {
+const ui = {
   container: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#000' },
-  textarea: { flex: 1, backgroundColor: '#000', color: '#22c55e', padding: '20px', border: 'none', fontFamily: 'monospace', resize: 'none', outline: 'none', fontSize: '14px', lineHeight: '1.5' },
-  footer: { padding: '10px', borderTop: '1px solid #1e293b', display: 'flex', justifyContent: 'flex-end', backgroundColor: '#000' },
-  runBtn: { backgroundColor: '#22c55e', color: '#000', border: 'none', padding: '8px 24px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' },
-  upgradeBtn: { backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '8px 24px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' },
-  outputBox: { height: '150px', backgroundColor: '#020617', borderTop: '1px solid #1e293b', padding: '15px', overflowY: 'auto', fontSize: '13px', fontFamily: 'monospace' }
+  textarea: { 
+    flex: 1, backgroundColor: '#000', color: '#22c55e', padding: '25px', 
+    border: 'none', fontFamily: '"Fira Code", monospace', resize: 'none', 
+    outline: 'none', fontSize: '15px', lineHeight: '1.6' 
+  },
+  footer: { padding: '12px', borderTop: '1px solid #1e293b', display: 'flex', justifyContent: 'flex-end' },
+  runBtn: { backgroundColor: '#22c55e', color: '#000', border: 'none', padding: '10px 30px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' },
+  upgradeBtn: { backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '10px 30px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' },
+  outputBox: { height: '160px', backgroundColor: '#020617', borderTop: '1px solid #1e293b', padding: '20px', overflowY: 'auto', fontSize: '13px' }
 };
 
 export default CodeEditor;
