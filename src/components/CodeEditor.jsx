@@ -50,8 +50,9 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
     }
 
     const currentRuns = user?.dailyExecutions || 0;
+    // Check limits if not Pro
     if (!user?.isPro && currentRuns >= 12) {
-      setError("⛔ LIMIT REACHED: 12/12 runs used.");
+      setError("⛔ LIMIT REACHED: 12/12 runs used today.");
       setIsPaystackOpen(true);
       return; 
     }
@@ -75,25 +76,42 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
       const result = data.run.output || "";
       const nextRuns = currentRuns + 1;
 
-      // Update Daily Runs
-      setUser(prev => ({ ...prev, dailyExecutions: nextRuns }));
-      updateUserProfile(user.uid, { dailyExecutions: nextRuns });
-
       if (data.run.stderr) {
         setError(data.run.stderr);
+        // Even if error, we count the run (optional, depends on your preference)
+        setUser(prev => ({ ...prev, dailyExecutions: nextRuns }));
+        updateUserProfile(user.uid, { dailyExecutions: nextRuns });
       } else {
-        // PASS/FAIL LOGIC
-        const isCorrect = expectedOutput && result.trim() === expectedOutput.trim();
+        // --- XP LOGIC STARTS HERE ---
         
-        if (isCorrect) {
-            setOutput(`${result}\n\n✨ SUCCESS! +25 XP GAINED`);
-            // Optimistic UI Update
-            setUser(prev => ({ ...prev, xp: (prev.xp || 0) + 25 }));
-            // Background DB Update
-            updateUserProfile(user.uid, { xp: increment(25) }).catch(console.error);
+        // 1. Clean the strings (remove extra spaces/newlines) to compare fairly
+        const cleanResult = result.trim(); 
+        const cleanExpected = expectedOutput ? expectedOutput.trim() : "";
+
+        // 2. Check match
+        if (cleanExpected && cleanResult === cleanExpected) {
+            setOutput(`${result}\n\n✨ CORRECT! +25 XP`);
+            
+            // Add XP locally (Visual)
+            setUser(prev => ({ 
+                ...prev, 
+                dailyExecutions: nextRuns,
+                xp: (prev.xp || 0) + 25 
+            }));
+
+            // Add XP to Database
+            updateUserProfile(user.uid, { 
+                dailyExecutions: nextRuns,
+                xp: increment(25) 
+            });
+            
         } else {
-            setOutput(result || "Done (No output).");
+            // Wrong answer
+            setOutput(result);
+            setUser(prev => ({ ...prev, dailyExecutions: nextRuns }));
+            updateUserProfile(user.uid, { dailyExecutions: nextRuns });
         }
+        // --- XP LOGIC ENDS HERE ---
       }
     } catch (err) {
       setError("Connection error. Check Piston API.");
@@ -108,8 +126,8 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
         value={code}
         onChange={(e) => setCode(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="// Solution goes here..."
-        style={ui.textarea}
+        placeholder="// Write your code here..."
+        style={ui.textarea} // This now has the green color
         spellCheck="false"
       />
       <div style={ui.footer}>
@@ -118,7 +136,7 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
           disabled={isRunning}
           style={!user?.isPro && (user?.dailyExecutions >= 12) ? ui.upgradeBtn : ui.runBtn}
         >
-          {isRunning ? "..." : !user?.isPro && (user?.dailyExecutions >= 12) ? "🚀 UNLOCK PRO" : "RUN CODE"}
+          {isRunning ? "Running..." : !user?.isPro && (user?.dailyExecutions >= 12) ? "🚀 UNLOCK PRO" : "RUN CODE"}
         </button>
       </div>
       <div style={ui.outputBox}>
@@ -132,7 +150,8 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
 
 const ui = {
   container: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#000' },
-  textarea: { flex: 1, backgroundColor: '#000', color: '#cbd5e1', padding: '25px', border: 'none', fontFamily: '"Fira Code", monospace', resize: 'none', outline: 'none', fontSize: '15px', lineHeight: '1.6' },
+  // REVERTED COLOR TO GREEN HERE:
+  textarea: { flex: 1, backgroundColor: '#000', color: '#22c55e', padding: '25px', border: 'none', fontFamily: '"Fira Code", monospace', resize: 'none', outline: 'none', fontSize: '15px', lineHeight: '1.6' },
   footer: { padding: '12px', borderTop: '1px solid #1e293b', display: 'flex', justifyContent: 'flex-end' },
   runBtn: { backgroundColor: '#22c55e', color: '#000', border: 'none', padding: '10px 30px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' },
   upgradeBtn: { backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '10px 30px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' },
