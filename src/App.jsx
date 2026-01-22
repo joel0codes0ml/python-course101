@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import Mascot from "./components/Mascot.jsx";
@@ -53,14 +52,10 @@ export default function App() {
           if (lastSeen !== today) {
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
-            // Increment if they logged in yesterday, else reset to 1
             streak = (lastSeen === yesterday.toDateString()) ? streak + 1 : 1;
-            
-            // Background update to save the new streak/date
             updateUserProfile(firebaseUser.uid, { lastLoginDate: today, streak });
           }
 
-          // Merge profile data into state
           setUser({ 
             uid: firebaseUser.uid, 
             xp: 0, 
@@ -69,7 +64,7 @@ export default function App() {
             streak 
           });
 
-          // Subscribe to real-time leaderboard
+          // LIVE LEADERBOARD CONNECTION
           unsubscribeLeader = subscribeLeaderboard((data) => setLeaderboard(data));
         } catch (err) {
           console.error("Profile recovery failed", err);
@@ -110,7 +105,6 @@ export default function App() {
   return (
     <PayPalScriptProvider options={{ "client-id": "test", currency: "USD" }}>
       <div style={styles.appContainer}>
-        {/* --- NAVIGATION --- */}
         <nav style={styles.nav}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <Mascot />
@@ -135,7 +129,6 @@ export default function App() {
         </nav>
 
         <div style={styles.workspace}>
-          {/* --- SIDEBAR (COURSE SELECTOR) --- */}
           <aside style={styles.sidebar}>
             <div style={styles.curriculumHeader}>CURRICULUM</div>
             <div style={styles.langList}>
@@ -153,15 +146,12 @@ export default function App() {
                 </button>
               ))}
             </div>
-            
-            {/* MINI LEADERBOARD PREVIEW */}
             <div style={{marginTop: 'auto', borderTop: '1px solid #1e293b', padding: '15px'}}>
                 <div style={{fontSize: '9px', color: '#475569', fontWeight: 'bold', marginBottom: '10px'}}>TOP NINJAS</div>
                 <Leaderboard data={leaderboard.slice(0, 5)} compact={true} />
             </div>
           </aside>
 
-          {/* --- LESSON CONTENT --- */}
           <main style={styles.lessonPanel}>
             <div style={styles.moduleTag}>MODULE {currentLessonIndex + 1}</div>
             <h1 style={styles.lessonTitle}>{current.title}</h1>
@@ -171,7 +161,7 @@ export default function App() {
             
             <div style={styles.solutionSection}>
                 <h4 style={styles.solLabel}>EXPECTED TERMINAL OUTPUT</h4>
-                <div style={styles.solCode}>{current.expectedOutput}</div>
+                <div style={styles.solCode}>{current.expectedOutput || "No output expected"}</div>
                 <h4 style={styles.solLabel}>REFERENCE CODE</h4>
                 <pre style={styles.solCode}>{current.starterCode}</pre>
             </div>
@@ -182,7 +172,6 @@ export default function App() {
             </div>
           </main>
 
-          {/* --- CODE EDITOR --- */}
           <section style={styles.editorPanel}>
             <CodeEditor 
               user={user} 
@@ -195,33 +184,22 @@ export default function App() {
           </section>
         </div>
 
-        {/* --- PAYMENT MODAL --- */}
         {isPaystackOpen && (
           <div style={styles.modalOverlay}>
             <div style={styles.modalCard}>
               <h2 style={{ color: '#fff', fontSize: '20px' }}>Unlock Zenin Pro</h2>
               <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px' }}>Unlimited code runs & all certificates.</p>
-
               <div style={styles.paymentMethodBox}>
                   <span style={styles.methodLabel}>KENYA (M-PESA / CARD)</span>
-                  <button 
-                    onClick={() => window.open("https://paystack.shop/pay/zdrj1fu6qq", "_blank")}
-                    style={styles.paystackLink}
-                  >
-                    PAY KES 500
-                  </button>
+                  <button onClick={() => window.open("https://paystack.shop/pay/zdrj1fu6qq", "_blank")} style={styles.paystackLink}>PAY KES 500</button>
                   <button onClick={handleActivatePro} style={styles.verifyBtn}>I HAVE PAID VIA M-PESA</button>
               </div>
-
               <div style={{ margin: '15px 0', color: '#475569', fontSize: '10px', fontWeight: 'bold' }}>OR</div>
-
               <div style={styles.paymentMethodBoxPayPal}>
                   <span style={{...styles.methodLabel, color: '#003087'}}>GLOBAL (PAYPAL / CARD)</span>
                   <PayPalButtons 
                     style={{ layout: 'vertical', shape: 'rect', height: 40 }}
-                    createOrder={(data, actions) => {
-                      return actions.order.create({ purchase_units: [{ amount: { value: "4.00" } }] });
-                    }}
+                    createOrder={(data, actions) => actions.order.create({ purchase_units: [{ amount: { value: "4.00" } }] })}
                     onApprove={handleActivatePro}
                   />
               </div>
@@ -230,7 +208,6 @@ export default function App() {
           </div>
         )}
 
-        {/* --- FULL LEADERBOARD MODAL --- */}
         {isLeaderboardOpen && (
           <div style={styles.modalOverlay} onClick={() => setIsLeaderboardOpen(false)}>
             <div style={styles.leaderboardModal} onClick={e => e.stopPropagation()}>
@@ -254,7 +231,6 @@ export default function App() {
   );
 }
 
-// TIER HELPER COMPONENT
 const TierColumn = ({ title, xp, data, color }) => (
   <div style={styles.tierCol}>
     <div style={{...styles.tierHeader, borderBottom: `2px solid ${color}`}}>
