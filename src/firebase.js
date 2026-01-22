@@ -43,7 +43,7 @@ export const auth = getAuth(app);
 setPersistence(auth, browserLocalPersistence)
   .catch((err) => console.error("Persistence Error:", err));
 
-// High-speed Database initialization
+// High-speed Database initialization with Local Caching
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ 
     tabManager: persistentMultipleTabManager() 
@@ -52,16 +52,23 @@ export const db = initializeFirestore(app, {
 
 // ================= AUTH HELPERS =================
 
+/** * OPTIMIZED SIGNUP: 
+ * Takes the user to the app instantly while processing profile in background.
+ */
 export const signUpWithEmail = async (email, password, username) => {
+  // 1. Only wait for the account creation (The critical part)
   const cred = await createUserWithEmailAndPassword(auth, email, password);
-  await updateProfile(cred.user, { displayName: username });
   
-  // Create the initial database entry immediately after signup
-  await createUserProfile(cred.user.uid, { 
+  // 2. BACKGROUND TASKS: We DO NOT 'await' these. 
+  // They run while the user is already being redirected to the dashboard.
+  updateProfile(cred.user, { displayName: username }).catch(e => console.error("BG Profile Update Error:", e));
+  
+  createUserProfile(cred.user.uid, { 
     username: username,
     email: email 
-  });
+  }).catch(e => console.error("BG DB Creation Error:", e));
   
+  // 3. Return immediately
   return cred.user;
 };
 
@@ -87,8 +94,8 @@ export const createUserProfile = async (uid, data) => {
   return setDoc(ref, {
     xp: 0,
     dailyExecutions: 0, 
-    streak: 0,                // Added for tracking
-    lastExecutionDate: "",    // Added for tracking
+    streak: 0,
+    lastExecutionDate: "",
     isPro: false,
     completedLessons: [],
     online: true,
@@ -107,16 +114,14 @@ export const getUserProfile = async (uid) => {
   }
 };
 
-/** Optimized update function used by CodeEditor */
+/** Optimized update function used by CodeEditor & Payments */
 export const updateUserProfile = async (uid, updates) => {
   if (!uid) return;
   const ref = doc(db, "users", uid);
   return updateDoc(ref, updates);
 };
 
-/** REAL-TIME LEADERBOARD 
- * Fetches top 100 to ensure all 5 tiers (20 per tier) have data
- */
+/** REAL-TIME LEADERBOARD */
 export const subscribeLeaderboard = (callback) => {
   const q = query(
     collection(db, "users"), 
