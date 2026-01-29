@@ -8,8 +8,12 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState("");
 
+  // ADDED: Sound effect
+  const successSound = new Audio("https://www.soundjay.com/misc/sounds/magic-chime-01.mp3");
+
   useEffect(() => {
-    setCode(starterCode || ""); 
+    // CHANGED: Instead of starterCode, we give a blank prompt so they must type it.
+    setCode("// Type your code here...\n"); 
     setOutput("");
     setError("");
   }, [starterCode, language]);
@@ -44,8 +48,9 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
   };
 
   const execute = async () => {
-    if (!code.trim()) {
-        setError("⚠️ Editor is empty!");
+    // CHANGED: Check if they just left the default comment
+    if (!code.trim() || code.includes("// Type your code")) {
+        setError("⚠️ Editor is empty! Please type the solution.");
         return;
     }
 
@@ -88,8 +93,13 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
         const cleanResult = result.trim(); 
         const cleanExpected = expectedOutput ? expectedOutput.trim() : "";
 
-        // 2. Check match
+        // 2. Check match (KEPT STRICT: ===)
         if (cleanExpected && cleanResult === cleanExpected) {
+            
+            // ADDED: Play Sound
+            successSound.volume = 0.5;
+            successSound.play().catch(e => console.log("Audio error", e));
+
             setOutput(`${result}\n\n✨ CORRECT! +25 XP`);
             
             // Add XP locally (Visual)
