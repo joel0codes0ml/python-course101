@@ -22,10 +22,12 @@ import {
   query,
   orderBy,
   limit,
+  where, // Added for Sector filtering
   persistentLocalCache,
   persistentMultipleTabManager
 } from "firebase/firestore";
 
+// SECURITY REMINDER: In production, move these to a .env file!
 const firebaseConfig = {
   apiKey: "AIzaSyC4iHWhpIWiDrkDK-bgYUHJcui_7Y54pwk",
   authDomain: "zeninlabs-546ab.firebaseapp.com",
@@ -35,15 +37,14 @@ const firebaseConfig = {
   appId: "1:790058421720:web:cbe60501b037a560a2f6ad",
 };
 
-// --- INITIALIZATION ---
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Persist session across refreshes
+// Keep the user logged in on refresh
 setPersistence(auth, browserLocalPersistence)
   .catch((err) => console.error("Persistence Error:", err));
 
-// High-speed Database initialization with Local Caching
+// Database with high-speed local caching
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ 
     tabManager: persistentMultipleTabManager() 
@@ -52,83 +53,78 @@ export const db = initializeFirestore(app, {
 
 // ================= AUTH HELPERS =================
 
-/** * OPTIMIZED SIGNUP: 
- * Takes the user to the app instantly while processing profile in background.
- */
 export const signUpWithEmail = async (email, password, username) => {
-  // 1. Only wait for the account creation (The critical part)
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   
-  // 2. BACKGROUND TASKS: We DO NOT 'await' these. 
-  // They run while the user is already being redirected to the dashboard.
-  updateProfile(cred.user, { displayName: username }).catch(e => console.error("BG Profile Update Error:", e));
+  // Update Firebase Auth Profile
+  await updateProfile(cred.user, { 
+    displayName: username,
+    photoURL: `https://api.dicebear.com/7.x/bottts/svg?seed=${username}` // Default avatar
+  });
   
-  createUserProfile(cred.user.uid, { 
-    username: username,
-    email: email 
-  }).catch(e => console.error("BG DB Creation Error:", e));
+  // Create Extended Firestore Profile
+  await createUserProfile(cred.user.uid, { 
+    username, 
+    email,
+    photoURL: cred.user.photoURL 
+  });
   
-  // 3. Return immediately
   return cred.user;
 };
 
-export const loginWithEmail = async (email, password) => {
-  const res = await signInWithEmailAndPassword(auth, email, password);
-  return res.user;
-};
-
-export const loginWithApple = async () => {
-  const provider = new OAuthProvider("apple.com");
-  const res = await signInWithPopup(auth, provider);
-  return res.user;
-};
-
+export const loginWithEmail = (email, password) => signInWithEmailAndPassword(auth, email, password);
 export const logout = () => signOut(auth);
-export const onAuthChange = (cb) => onAuthStateChanged(auth, cb);
 
-// ================= FIRESTORE HELPERS =================
+// ================= USER & PROFILE HELPERS =================
 
-/** Creates profile with Streak and Tier support */
 export const createUserProfile = async (uid, data) => {
   const ref = doc(db, "users", uid);
   return setDoc(ref, {
     xp: 0,
-    dailyExecutions: 0, 
+    level: 1,
     streak: 0,
-    lastExecutionDate: "",
-    isPro: false,
+    gems: 0,
+    bio: "New Zenin Student",
+    links: { github: "", linkedin: "", website: "" }, // Social links
     completedLessons: [],
-    online: true,
+    sectorProgress: { web: 0, data: 0, ai: 0 }, // Tracking progress per sector
     createdAt: new Date().toISOString(),
     ...data,
   }, { merge: true });
 };
 
-export const getUserProfile = async (uid) => {
-  try {
-    const snap = await getDoc(doc(db, "users", uid));
-    return snap.exists() ? snap.data() : null;
-  } catch (e) {
-    console.error("Fetch profile failed:", e);
-    return null;
-  }
+/** * SPEED FIX: Real-time User Listener
+ * Instead of one-time getDoc, this keeps the dashboard 
+ * updated instantly when XP or streaks change.
+ */
+export const subscribeToUserData = (uid, callback) => {
+  return onSnapshot(doc(db, "users", uid), (snap) => {
+    if (snap.exists()) callback(snap.data());
+  });
 };
 
-/** Optimized update function used by CodeEditor & Payments */
-export const updateUserProfile = async (uid, updates) => {
-  if (!uid) return;
-  const ref = doc(db, "users", uid);
-  return updateDoc(ref, updates);
+// ================= COURSE & SECTOR HELPERS =================
+
+/** Fetch courses specifically for Web, Data Science, or AI */
+export const subscribeToSectorCourses = (sectorId, callback) => {
+  const q = query(
+    collection(db, "courses"),
+    where("sector", "==", sectorId),
+    orderBy("order", "asc")
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
 };
 
-/** REAL-TIME LEADERBOARD */
+// ================= SOCIAL & LEADERBOARD =================
+
 export const subscribeLeaderboard = (callback) => {
   const q = query(
     collection(db, "users"), 
     orderBy("xp", "desc"), 
-    limit(100) 
+    limit(50) 
   );
-  
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
   });
