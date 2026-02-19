@@ -6,7 +6,7 @@ import CodeEditor from "./components/CodeEditor.jsx";
 import Leaderboard from "./components/Leaderboard.jsx";
 import { onAuthChange, getUserProfile, updateUserProfile, logout, subscribeLeaderboard } from "./firebase";
 
-// --- ALL CURRICULUM IMPORTS ---
+// --- CURRICULUM IMPORTS ---
 import { pythonLessons } from "./courses/python.js";
 import { clLessons } from "./courses/clessons.js";
 import { cppLessons } from "./courses/cpplessons.js";
@@ -16,22 +16,32 @@ import { rLessons } from "./courses/Rlessons.js";
 import { htmlLessons } from "./courses/html.js";
 import { cssLessons } from "./courses/css.js";
 
+// SECTOR DEFINITIONS
+const SECTORS = [
+  { id: 'web', name: 'WEB DEV', icon: '🌐' },
+  { id: 'data', name: 'DATA SCIENCE', icon: '📊' },
+  { id: 'ai', name: 'AI & ML', icon: '🧠' },
+  { id: 'sys', name: 'SYSTEMS', icon: '⚙️' }
+];
+
 const languages = [
-  { name: "Python", lessons: pythonLessons, id: "python" },
-  { name: "C", lessons: clLessons, id: "c" },
-  { name: "C++", lessons: cppLessons, id: "cpp" },
-  { name: "Go", lessons: goLessons, id: "go" },
-  { name: "SQL", lessons: sqlLessons, id: "sqlite3" },
-  { name: "R", lessons: rLessons, id: "r" },
-  { name: "HTML", lessons: htmlLessons, id: "html" },
-  { name: "CSS", lessons: cssLessons, id: "css" }
+  { name: "Python", lessons: pythonLessons, id: "python", sector: "data" },
+  { name: "SQL", lessons: sqlLessons, id: "sqlite3", sector: "data" },
+  { name: "R", lessons: rLessons, id: "r", sector: "data" },
+  { name: "C", lessons: clLessons, id: "c", sector: "sys" },
+  { name: "C++", lessons: cppLessons, id: "cpp", sector: "sys" },
+  { name: "Go", lessons: goLessons, id: "go", sector: "sys" },
+  { name: "HTML", lessons: htmlLessons, id: "html", sector: "web" },
+  { name: "CSS", lessons: cssLessons, id: "css", sector: "web" }
+  // ADD NEW COURSES HERE: { name: "Rust", lessons: rustLessons, id: "rust", sector: "sys" }
 ];
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
   const [leaderboard, setLeaderboard] = useState([]);
-  const [currentLanguage, setCurrentLanguage] = useState(languages[0]);
+  const [activeSector, setActiveSector] = useState("web"); // NEW: Sidebar Category
+  const [currentLanguage, setCurrentLanguage] = useState(languages.find(l => l.sector === "web"));
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [isPaystackOpen, setIsPaystackOpen] = useState(false); 
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
@@ -43,8 +53,6 @@ export default function App() {
       if (firebaseUser) {
         try {
           const profile = await getUserProfile(firebaseUser.uid);
-          
-          // --- STREAK & PERSISTENCE LOGIC ---
           const today = new Date().toDateString();
           const lastSeen = profile?.lastLoginDate || "";
           let streak = profile?.streak || 1;
@@ -56,18 +64,9 @@ export default function App() {
             updateUserProfile(firebaseUser.uid, { lastLoginDate: today, streak });
           }
 
-          setUser({ 
-            uid: firebaseUser.uid, 
-            xp: 0, 
-            dailyExecutions: 0, 
-            ...profile, 
-            streak 
-          });
-
-          // LIVE LEADERBOARD CONNECTION
+          setUser({ uid: firebaseUser.uid, xp: 0, dailyExecutions: 0, ...profile, streak });
           unsubscribeLeader = subscribeLeaderboard((data) => setLeaderboard(data));
         } catch (err) {
-          console.error("Profile recovery failed", err);
           setUser({ uid: firebaseUser.uid, username: "NINJA", xp: 0 });
         }
       } else {
@@ -89,6 +88,9 @@ export default function App() {
     alert("PRO ACTIVATED: Unlimited runs unlocked!");
   };
 
+  // Filter languages based on top sector scroll
+  const filteredLanguages = languages.filter(l => l.sector === activeSector);
+
   if (initializing) return (
     <div style={styles.loading}>
       <div className="sh-logo" style={{fontSize: '50px'}}>🌀</div>
@@ -98,24 +100,23 @@ export default function App() {
 
   if (!user) return <Login onLogin={setUser} />;
 
-  const lessons = currentLanguage.lessons || [];
-  const current = lessons[currentLessonIndex] || { title: "Complete", content: "Great job! Select another course." };
+  const lessons = currentLanguage?.lessons || [];
+  const current = lessons[currentLessonIndex] || { title: "Course Locked", content: "This module is being calibrated." };
   const runsLeft = Math.max(0, RUN_LIMIT - (user?.dailyExecutions || 0));
 
   return (
     <PayPalScriptProvider options={{ "client-id": "test", currency: "USD" }}>
       <div style={styles.appContainer}>
+        {/* TOP NAVIGATION BAR */}
         <nav style={styles.nav}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <Mascot />
             <span style={styles.logo}>ZENIN<span style={{ color: '#ef4444' }}>LABS</span></span>
-            
             {!user?.isPro ? (
               <button onClick={() => setIsPaystackOpen(true)} style={styles.upgradeBtn}>⚡ GO PRO</button>
             ) : (
               <span style={styles.proBadge}>👑 PRO MEMBER</span>
             )}
-            
             <button onClick={() => setIsLeaderboardOpen(true)} style={styles.rankLink}>🏆 RANKINGS</button>
             <div style={styles.streakBadge}>🔥 {user?.streak || 1} DAY STREAK</div>
           </div>
@@ -129,41 +130,60 @@ export default function App() {
         </nav>
 
         <div style={styles.workspace}>
+          {/* SIDEBAR WITH SECTOR SCROLL */}
           <aside style={styles.sidebar}>
-            <div style={styles.curriculumHeader}>CURRICULUM</div>
+            <div style={styles.sectorScroll}>
+              {SECTORS.map(s => (
+                <button 
+                  key={s.id} 
+                  onClick={() => setActiveSector(s.id)}
+                  style={{
+                    ...styles.sectorTab,
+                    color: activeSector === s.id ? '#ef4444' : '#475569',
+                    borderBottom: activeSector === s.id ? '2px solid #ef4444' : 'none'
+                  }}
+                >
+                  <div style={{fontSize: '16px'}}>{s.icon}</div>
+                  <div style={{fontSize: '8px', fontWeight: '900'}}>{s.name}</div>
+                </button>
+              ))}
+            </div>
+
+            <div style={styles.curriculumHeader}>{activeSector.toUpperCase()} MODULES</div>
             <div style={styles.langList}>
-              {languages.map(lang => (
+              {filteredLanguages.map(lang => (
                 <button 
                   key={lang.id}
                   onClick={() => { setCurrentLanguage(lang); setCurrentLessonIndex(0); }}
                   style={{ 
                     ...styles.langBtn, 
-                    color: lang.id === currentLanguage.id ? '#ef4444' : '#94a3b8',
-                    backgroundColor: lang.id === currentLanguage.id ? 'rgba(239, 68, 68, 0.05)' : 'transparent'
+                    color: lang.id === currentLanguage?.id ? '#22c55e' : '#94a3b8',
+                    backgroundColor: lang.id === currentLanguage?.id ? 'rgba(34, 197, 94, 0.05)' : 'transparent'
                   }}
                 >
-                  {lang.name.toUpperCase()} {lang.id === currentLanguage.id && "•"}
+                  {lang.name.toUpperCase()} {lang.id === currentLanguage?.id && "•"}
                 </button>
               ))}
             </div>
             <div style={{marginTop: 'auto', borderTop: '1px solid #1e293b', padding: '15px'}}>
-                <div style={{fontSize: '9px', color: '#475569', fontWeight: 'bold', marginBottom: '10px'}}>TOP NINJAS</div>
-                <Leaderboard data={leaderboard.slice(0, 5)} compact={true} />
+                <div style={{fontSize: '9px', color: '#475569', fontWeight: 'bold', marginBottom: '10px'}}>PEER ACTIVITY</div>
+                <Leaderboard data={leaderboard.slice(0, 3)} compact={true} />
             </div>
           </aside>
 
+          {/* LESSON PANEL */}
           <main style={styles.lessonPanel}>
-            <div style={styles.moduleTag}>MODULE {currentLessonIndex + 1}</div>
+            <div style={styles.moduleTag}>{currentLanguage?.name.toUpperCase()} • {currentLessonIndex + 1}</div>
             <h1 style={styles.lessonTitle}>{current.title}</h1>
             <div style={styles.contentBox}>
               <p style={styles.lessonText}>{current.content}</p>
             </div>
             
             <div style={styles.solutionSection}>
-                <h4 style={styles.solLabel}>EXPECTED TERMINAL OUTPUT</h4>
-                <div style={styles.solCode}>{current.expectedOutput || "No output expected"}</div>
-                <h4 style={styles.solLabel}>REFERENCE CODE</h4>
-                <pre style={styles.solCode}>{current.starterCode}</pre>
+                <h4 style={styles.solLabel}>GOAL OUTPUT</h4>
+                <div style={styles.solCode}>{current.expectedOutput || "Run code to see results"}</div>
+                <h4 style={styles.solLabel}>REFERENCE TEMPLATE</h4>
+                <pre style={styles.solCode}>{current.starterCode || "Type your solution in the editor..."}</pre>
             </div>
 
             <div style={styles.navBtns}>
@@ -172,11 +192,12 @@ export default function App() {
             </div>
           </main>
 
+          {/* CODE EDITOR PANEL */}
           <section style={styles.editorPanel}>
             <CodeEditor 
               user={user} 
               setUser={setUser} 
-              language={currentLanguage.id}
+              language={currentLanguage?.id || "python"}
               starterCode={current.starterCode}
               expectedOutput={current.expectedOutput}
               setIsPaystackOpen={setIsPaystackOpen}
@@ -184,6 +205,7 @@ export default function App() {
           </section>
         </div>
 
+        {/* MODALS REMAIN THE SAME... */}
         {isPaystackOpen && (
           <div style={styles.modalOverlay}>
             <div style={styles.modalCard}>
@@ -231,6 +253,7 @@ export default function App() {
   );
 }
 
+// Sub-component for Tiered Leaderboard
 const TierColumn = ({ title, xp, data, color }) => (
   <div style={styles.tierCol}>
     <div style={{...styles.tierHeader, borderBottom: `2px solid ${color}`}}>
@@ -249,8 +272,10 @@ const TierColumn = ({ title, xp, data, color }) => (
   </div>
 );
 
+// EXTENDED STYLES
 const styles = {
-  appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#020617', color: '#fff', overflow: 'hidden', fontFamily: 'Inter, sans-serif' },
+  // ... (keep your existing styles)
+  appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#020617', color: '#fff', overflow: 'hidden', fontFamily: 'monospace' },
   nav: { height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', backgroundColor: '#000', borderBottom: '1px solid #1e293b' },
   logo: { fontWeight: '900', fontStyle: 'italic', fontSize: '20px' },
   upgradeBtn: { marginLeft: '20px', backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '6px 14px', borderRadius: '4px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' },
@@ -265,6 +290,28 @@ const styles = {
   logoutBtn: { background: 'none', border: 'none', color: '#475569', fontSize: '11px', cursor: 'pointer' },
   workspace: { display: 'flex', flex: 1, overflow: 'hidden' },
   sidebar: { width: '220px', backgroundColor: '#000', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column' },
+  
+  // NEW STYLES FOR SECTOR BAR
+  sectorScroll: { 
+    display: 'flex', 
+    overflowX: 'auto', 
+    backgroundColor: '#020617', 
+    borderBottom: '1px solid #1e293b',
+    scrollbarWidth: 'none'
+  },
+  sectorTab: {
+    flex: '0 0 73px',
+    padding: '12px 0',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '4px',
+    transition: '0.2s'
+  },
+
   curriculumHeader: { padding: '24px 16px 12px', fontSize: '10px', fontWeight: '900', color: '#475569' },
   langList: { flex: 1, overflowY: 'auto' },
   langBtn: { width: '100%', textAlign: 'left', padding: '14px 20px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '800', transition: '0.2s' },
