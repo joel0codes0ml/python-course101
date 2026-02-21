@@ -40,13 +40,17 @@ export default function App() {
   const [needsProfile, setNeedsProfile] = useState(false); 
   const [initializing, setInitializing] = useState(true);
   const [leaderboard, setLeaderboard] = useState([]);
+  
+  // View State Management
+  const [activeView, setActiveView] = useState("workspace"); // 'workspace' or 'profile'
+  
   const [activeSector, setActiveSector] = useState("web");
   const [currentLanguage, setCurrentLanguage] = useState(languages.find(l => l.sector === "web"));
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [isPaystackOpen, setIsPaystackOpen] = useState(false); 
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   
-  const RUN_LIMIT = 25; // BUMPED TO 25
+  const RUN_LIMIT = 25;
 
   useEffect(() => {
     let unsubscribeLeader;
@@ -55,6 +59,7 @@ export default function App() {
         try {
           const profile = await getUserProfile(firebaseUser.uid);
           
+          // Check if they need a profile setup, but don't force the screen change
           if (!profile || !profile.setupComplete) {
             setNeedsProfile(true);
           } else {
@@ -106,8 +111,6 @@ export default function App() {
   );
 
   if (!user) return <Login onLogin={setUser} />;
-  
-  if (needsProfile) return <Profile onComplete={() => setNeedsProfile(false)} />;
 
   const filteredLanguages = languages.filter(l => l.sector === activeSector);
   const lessons = currentLanguage?.lessons || [];
@@ -117,10 +120,11 @@ export default function App() {
   return (
     <PayPalScriptProvider options={{ "client-id": "test", currency: "USD" }}>
       <div style={styles.appContainer}>
+        
+        {/* TOP NAVIGATION */}
         <nav style={styles.nav}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <Mascot />
-            {/* BRANDING CHANGED TO ZENINLABS */}
             <span style={styles.logo}>ZENIN<span style={{ color: '#ef4444' }}>LABS</span></span>
             {!user?.isPro ? (
               <button onClick={() => setIsPaystackOpen(true)} style={styles.upgradeBtn}>⚡ GO PRO</button>
@@ -134,84 +138,114 @@ export default function App() {
           <div style={styles.navRight}>
             <div style={styles.syncContainer}><div style={styles.syncDot} /><span>SYNCED</span></div>
             {!user?.isPro && <span style={styles.runsText}>{runsLeft}/{RUN_LIMIT} RUNS LEFT</span>}
-            <span style={styles.userBadge}>{user?.username?.toUpperCase()} | {user?.xp || 0} XP</span>
+            
+            {/* NEW PROFILE TOGGLE BUTTON */}
+            <button 
+              onClick={() => setActiveView(activeView === 'profile' ? 'workspace' : 'profile')} 
+              style={activeView === 'profile' ? styles.profileBtnActive : styles.profileBtn}
+            >
+              <div style={{ position: 'relative' }}>
+                <img 
+                  src={user?.photoURL || `https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=${user?.username}`} 
+                  style={styles.navAvatar} 
+                  alt="Profile"
+                />
+                {/* Red dot notification if profile is incomplete */}
+                {needsProfile && <div style={styles.notificationDot} />}
+              </div>
+              <div style={styles.navUserInfo}>
+                <span style={styles.navUsername}>{user?.username?.toUpperCase() || "NINJA"}</span>
+                <span style={styles.navXP}>{user?.xp || 0} XP</span>
+              </div>
+            </button>
+
             <button onClick={() => logout()} style={styles.logoutBtn}>LOGOUT</button>
           </div>
         </nav>
 
-        <div style={styles.workspace}>
-          <aside style={styles.sidebar}>
-            <div style={styles.sectorScroll}>
-              {SECTORS.map(s => (
-                <button 
-                  key={s.id} 
-                  onClick={() => setActiveSector(s.id)}
-                  style={{
-                    ...styles.sectorTab,
-                    color: activeSector === s.id ? '#ef4444' : '#475569',
-                    borderBottom: activeSector === s.id ? '2px solid #ef4444' : 'none'
-                  }}
-                >
-                  <div style={{fontSize: '16px'}}>{s.icon}</div>
-                  <div style={{fontSize: '8px', fontWeight: '900'}}>{s.name}</div>
-                </button>
-              ))}
-            </div>
+        {/* DYNAMIC VIEW RENDERING */}
+        {activeView === 'profile' ? (
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <Profile onComplete={() => {
+              setActiveView('workspace');
+              setNeedsProfile(false);
+            }} />
+          </div>
+        ) : (
+          <div style={styles.workspace}>
+            <aside style={styles.sidebar}>
+              <div style={styles.sectorScroll}>
+                {SECTORS.map(s => (
+                  <button 
+                    key={s.id} 
+                    onClick={() => setActiveSector(s.id)}
+                    style={{
+                      ...styles.sectorTab,
+                      color: activeSector === s.id ? '#ef4444' : '#475569',
+                      borderBottom: activeSector === s.id ? '2px solid #ef4444' : 'none'
+                    }}
+                  >
+                    <div style={{fontSize: '16px'}}>{s.icon}</div>
+                    <div style={{fontSize: '8px', fontWeight: '900'}}>{s.name}</div>
+                  </button>
+                ))}
+              </div>
 
-            <div style={styles.curriculumHeader}>{activeSector.toUpperCase()} MODULES</div>
-            <div style={styles.langList}>
-              {filteredLanguages.map(lang => (
-                <button 
-                  key={lang.id}
-                  onClick={() => { setCurrentLanguage(lang); setCurrentLessonIndex(0); }}
-                  style={{ 
-                    ...styles.langBtn, 
-                    color: lang.id === currentLanguage?.id ? '#22c55e' : '#94a3b8',
-                    backgroundColor: lang.id === currentLanguage?.id ? 'rgba(34, 197, 94, 0.05)' : 'transparent'
-                  }}
-                >
-                  {lang.name.toUpperCase()} {lang.id === currentLanguage?.id && "•"}
-                </button>
-              ))}
-            </div>
-            <div style={{marginTop: 'auto', borderTop: '1px solid #1e293b', padding: '15px'}}>
-                <div style={{fontSize: '9px', color: '#475569', fontWeight: 'bold', marginBottom: '10px'}}>PEER ACTIVITY</div>
-                <Leaderboard data={leaderboard.slice(0, 3)} compact={true} />
-            </div>
-          </aside>
+              <div style={styles.curriculumHeader}>{activeSector.toUpperCase()} MODULES</div>
+              <div style={styles.langList}>
+                {filteredLanguages.map(lang => (
+                  <button 
+                    key={lang.id}
+                    onClick={() => { setCurrentLanguage(lang); setCurrentLessonIndex(0); }}
+                    style={{ 
+                      ...styles.langBtn, 
+                      color: lang.id === currentLanguage?.id ? '#22c55e' : '#94a3b8',
+                      backgroundColor: lang.id === currentLanguage?.id ? 'rgba(34, 197, 94, 0.05)' : 'transparent'
+                    }}
+                  >
+                    {lang.name.toUpperCase()} {lang.id === currentLanguage?.id && "•"}
+                  </button>
+                ))}
+              </div>
+              <div style={{marginTop: 'auto', borderTop: '1px solid #1e293b', padding: '15px'}}>
+                  <div style={{fontSize: '9px', color: '#475569', fontWeight: 'bold', marginBottom: '10px'}}>PEER ACTIVITY</div>
+                  <Leaderboard data={leaderboard.slice(0, 3)} compact={true} />
+              </div>
+            </aside>
 
-          <main style={styles.lessonPanel}>
-            <div style={styles.moduleTag}>{currentLanguage?.name.toUpperCase()} • {currentLessonIndex + 1}</div>
-            <h1 style={styles.lessonTitle}>{current.title}</h1>
-            <div style={styles.contentBox}>
-              <p style={styles.lessonText}>{current.content}</p>
-            </div>
-            <br />
-            
-            <div style={styles.solutionSection}>
-                <h4 style={styles.solLabel}>GOAL OUTPUT</h4>
-                <div style={styles.solCode}>{current.expectedOutput || "Run code to see results"}</div>
-                <h4 style={styles.solLabel}>REFERENCE TEMPLATE</h4>
-                <pre style={styles.solCode}>{current.starterCode || "Type your solution in the editor..."}</pre>
-            </div>
+            <main style={styles.lessonPanel}>
+              <div style={styles.moduleTag}>{currentLanguage?.name.toUpperCase()} • {currentLessonIndex + 1}</div>
+              <h1 style={styles.lessonTitle}>{current.title}</h1>
+              <div style={styles.contentBox}>
+                <p style={styles.lessonText}>{current.content}</p>
+              </div>
+              <br />
+              
+              <div style={styles.solutionSection}>
+                  <h4 style={styles.solLabel}>GOAL OUTPUT</h4>
+                  <div style={styles.solCode}>{current.expectedOutput || "Run code to see results"}</div>
+                  <h4 style={styles.solLabel}>REFERENCE TEMPLATE</h4>
+                  <pre style={styles.solCode}>{current.starterCode || "Type your solution in the editor..."}</pre>
+              </div>
 
-            <div style={styles.navBtns}>
-              <button onClick={() => setCurrentLessonIndex(p => Math.max(0, p-1))} style={styles.btnPrev}>PREVIOUS</button>
-              <button onClick={() => setCurrentLessonIndex(p => Math.min(lessons.length-1, p+1))} style={styles.btnNext}>NEXT LESSON</button>
-            </div>
-          </main>
+              <div style={styles.navBtns}>
+                <button onClick={() => setCurrentLessonIndex(p => Math.max(0, p-1))} style={styles.btnPrev}>PREVIOUS</button>
+                <button onClick={() => setCurrentLessonIndex(p => Math.min(lessons.length-1, p+1))} style={styles.btnNext}>NEXT LESSON</button>
+              </div>
+            </main>
 
-          <section style={styles.editorPanel}>
-            <CodeEditor 
-              user={user} 
-              setUser={setUser} 
-              language={currentLanguage?.id || "python"}
-              starterCode={current.starterCode}
-              expectedOutput={current.expectedOutput}
-              setIsPaystackOpen={setIsPaystackOpen}
-            />
-          </section>
-        </div>
+            <section style={styles.editorPanel}>
+              <CodeEditor 
+                user={user} 
+                setUser={setUser} 
+                language={currentLanguage?.id || "python"}
+                starterCode={current.starterCode}
+                expectedOutput={current.expectedOutput}
+                setIsPaystackOpen={setIsPaystackOpen}
+              />
+            </section>
+          </div>
+        )}
 
         {/* MODALS */}
         {isPaystackOpen && (
@@ -291,8 +325,17 @@ const styles = {
   syncContainer: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px', color: '#475569', fontWeight: 'bold' },
   syncDot: { width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', boxShadow: '0 0 8px #22c55e' },
   runsText: { color: '#475569', fontSize: '11px', fontWeight: 'bold' },
-  userBadge: { color: '#22c55e', fontSize: '12px', fontWeight: 'bold', background: 'rgba(34, 197, 94, 0.1)', padding: '4px 12px', borderRadius: '20px' },
-  logoutBtn: { background: 'none', border: 'none', color: '#475569', fontSize: '11px', cursor: 'pointer' },
+  
+  // NEW PROFILE BUTTON STYLES
+  profileBtn: { display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid #1e293b', padding: '4px 12px 4px 6px', borderRadius: '30px', cursor: 'pointer', transition: 'all 0.2s ease' },
+  profileBtnActive: { display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(34, 197, 94, 0.1)', border: '1px solid #22c55e', padding: '4px 12px 4px 6px', borderRadius: '30px', cursor: 'pointer', transition: 'all 0.2s ease' },
+  navAvatar: { width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#0f172a', border: '1px solid #334155', objectFit: 'cover' },
+  navUserInfo: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start' },
+  navUsername: { fontSize: '10px', fontWeight: '900', color: '#f8fafc', letterSpacing: '0.5px' },
+  navXP: { fontSize: '9px', fontWeight: 'bold', color: '#22c55e' },
+  notificationDot: { position: 'absolute', top: -2, right: -2, width: '10px', height: '10px', backgroundColor: '#ef4444', borderRadius: '50%', border: '2px solid #000' },
+  
+  logoutBtn: { background: 'none', border: 'none', color: '#475569', fontSize: '11px', cursor: 'pointer', paddingLeft: '10px', borderLeft: '1px solid #1e293b' },
   workspace: { display: 'flex', flex: 1, overflow: 'hidden' },
   sidebar: { width: '220px', backgroundColor: '#000', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column' },
   sectorScroll: { display: 'flex', overflowX: 'auto', backgroundColor: '#020617', borderBottom: '1px solid #1e293b', scrollbarWidth: 'none' },
