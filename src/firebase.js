@@ -22,12 +22,12 @@ import {
   query,
   orderBy,
   limit,
-  where, // Added for Sector filtering
+  where,
   persistentLocalCache,
   persistentMultipleTabManager
 } from "firebase/firestore";
 
-// SECURITY REMINDER: In production, move these to a .env file!
+// SECURITY: Move these to Vercel Environment Variables (.env) for production!
 const firebaseConfig = {
   apiKey: "AIzaSyC4iHWhpIWiDrkDK-bgYUHJcui_7Y54pwk",
   authDomain: "zeninlabs-546ab.firebaseapp.com",
@@ -40,29 +40,29 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Keep the user logged in on refresh
+// Persist session across refreshes
 setPersistence(auth, browserLocalPersistence)
-  .catch((err) => console.error("Persistence Error:", err));
+  .catch((err) => console.error("Auth Persistence Error:", err));
 
-// Database with high-speed local caching
+// Firestore with multi-tab offline support
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ 
     tabManager: persistentMultipleTabManager() 
   })
 });
 
-// ================= AUTH HELPERS =================
+// ================= AUTHENTICATION =================
 
 export const signUpWithEmail = async (email, password, username) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   
-  // Update Firebase Auth Profile
+  // Update Auth Profile with a neutral avatar
   await updateProfile(cred.user, { 
     displayName: username,
-    photoURL: `https://api.dicebear.com/7.x/bottts/svg?seed=${username}` // Default avatar
+    photoURL: `https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=${username}`
   });
   
-  // Create Extended Firestore Profile
+  // Initialize user data in Firestore
   await createUserProfile(cred.user.uid, { 
     username, 
     email,
@@ -73,9 +73,15 @@ export const signUpWithEmail = async (email, password, username) => {
 };
 
 export const loginWithEmail = (email, password) => signInWithEmailAndPassword(auth, email, password);
+
+export const loginWithApple = async () => {
+  const provider = new OAuthProvider('apple.com');
+  return signInWithPopup(auth, provider);
+};
+
 export const logout = () => signOut(auth);
 
-// ================= USER & PROFILE HELPERS =================
+// ================= USER DATA & PROFILES =================
 
 export const createUserProfile = async (uid, data) => {
   const ref = doc(db, "users", uid);
@@ -84,28 +90,30 @@ export const createUserProfile = async (uid, data) => {
     level: 1,
     streak: 0,
     gems: 0,
-    bio: "New Zenin Student",
-    links: { github: "", linkedin: "", website: "" }, // Social links
+    bio: "New Student",
+    links: { github: "", linkedin: "", website: "" },
     completedLessons: [],
-    sectorProgress: { web: 0, data: 0, ai: 0 }, // Tracking progress per sector
+    sectorProgress: { web: 0, data: 0, ai: 0 },
     createdAt: new Date().toISOString(),
     ...data,
   }, { merge: true });
 };
 
-/** * SPEED FIX: Real-time User Listener
- * Instead of one-time getDoc, this keeps the dashboard 
- * updated instantly when XP or streaks change.
- */
+export const getUserProfile = async (uid) => {
+  const snap = await getDoc(doc(db, "users", uid));
+  return snap.exists() ? snap.data() : null;
+};
+
+/** Listen for real-time profile changes (XP, streaks, etc.) */
 export const subscribeToUserData = (uid, callback) => {
   return onSnapshot(doc(db, "users", uid), (snap) => {
     if (snap.exists()) callback(snap.data());
   });
 };
 
-// ================= COURSE & SECTOR HELPERS =================
+// ================= COURSE MANAGEMENT =================
 
-/** Fetch courses specifically for Web, Data Science, or AI */
+/** Fetch courses by category (Web, Data, AI) */
 export const subscribeToSectorCourses = (sectorId, callback) => {
   const q = query(
     collection(db, "courses"),
@@ -117,7 +125,7 @@ export const subscribeToSectorCourses = (sectorId, callback) => {
   });
 };
 
-// ================= SOCIAL & LEADERBOARD =================
+// ================= GLOBAL DATA =================
 
 export const subscribeLeaderboard = (callback) => {
   const q = query(
