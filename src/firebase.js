@@ -53,10 +53,13 @@ export const db = initializeFirestore(app, {
 
 // ================= AUTHENTICATION =================
 
+/** Listens for user login/logout state changes */
+export const onAuthChange = (callback) => onAuthStateChanged(auth, callback);
+
 export const signUpWithEmail = async (email, password, username) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   
-  // Update Auth Profile with a neutral avatar
+  // Update Auth Profile with a professional avatar
   await updateProfile(cred.user, { 
     displayName: username,
     photoURL: `https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=${username}`
