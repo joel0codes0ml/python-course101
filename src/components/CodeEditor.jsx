@@ -2,24 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { updateUserProfile } from "../firebase";
 import { increment } from "firebase/firestore";
 
-// NEW: For Syntax Highlighting
+// For Syntax Highlighting
 import Editor from 'react-simple-code-editor';
 import { highlight, languages as prismLangs } from 'prismjs/components/prism-core';
 import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-python';
-import 'prismjs/themes/prism-tomorrow.css'; // Dark theme
+import 'prismjs/themes/prism-tomorrow.css'; 
 
-// SECTOR MAPPING
 const SECTOR_MAP = {
   python: 'data',
   r: 'data',
   sqlite3: 'data',
   html: 'web',
   css: 'web',
-  c: 'ai',
-  cpp: 'ai',
-  go: 'ai'
+  c: 'sys', // Changed from 'ai' to 'sys' to match your App.jsx SECTORS
+  cpp: 'sys',
+  go: 'sys'
 };
 
 const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, expectedOutput }) => {
@@ -31,13 +30,15 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
   const successSound = new Audio("https://www.soundjay.com/misc/sounds/magic-chime-01.mp3");
 
   useEffect(() => {
-    setCode(starterCode || "// Start coding here...");
+    // FIX: Truly blank if no starter code, avoids the "// Start coding" check issues
+    setCode(starterCode || "");
     setOutput("");
     setError("");
   }, [starterCode, language]);
 
   const execute = async () => {
-    if (!code.trim() || code.includes("// Start coding")) {
+    // Check if truly empty
+    if (!code.trim()) {
         setError("⚠️ Editor is empty! Please type the solution.");
         return;
     }
@@ -74,20 +75,17 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
         const cleanResult = result.trim(); 
         const cleanExpected = expectedOutput ? expectedOutput.trim() : "";
 
+        // VALIDATION LOGIC
         if (cleanExpected && cleanResult === cleanExpected) {
             successSound.volume = 0.4;
             successSound.play().catch(e => console.log("Audio block", e));
 
             setOutput(`${result}\n\n✨ CORRECT! +25 XP`);
             
-            // 1. Identify Sector
             const sector = SECTOR_MAP[language] || 'web';
-            
-            // 2. Calculate Progress (e.g., adding 5% to the specific sector)
             const currentProgress = user?.sectorProgress?.[sector] || 0;
             const newProgress = Math.min(100, currentProgress + 5);
 
-            // 3. Update State & Database
             const updates = {
                 dailyExecutions: nextRuns,
                 xp: increment(25),
@@ -117,7 +115,6 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
 
   return (
     <div style={ui.container}>
-      {/* HEADER WITH LANGUAGE TAG */}
       <div style={ui.editorHeader}>
         <span style={ui.langTag}>{language.toUpperCase()} EDITOR</span>
       </div>
@@ -152,6 +149,7 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode, e
   );
 };
 
+// ... keep your ui styles exactly as they are ...
 const ui = {
   container: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#000', borderLeft: '1px solid #1e293b' },
   editorHeader: { padding: '10px 20px', backgroundColor: '#0f172a', borderBottom: '1px solid #1e293b' },
