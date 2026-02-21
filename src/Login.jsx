@@ -19,7 +19,15 @@ export default function Login({ onLogin }) {
     try {
       if (isRegistering) {
         const user = await signUpWithEmail(email, password, username);
-        const profile = { username, email, xp: 0, dailyExecutions: 0, isPro: false };
+        // ADDED setupComplete: false to trigger onboarding gate
+        const profile = { 
+          username, 
+          email, 
+          xp: 0, 
+          dailyExecutions: 0, 
+          isPro: false,
+          setupComplete: false 
+        };
         onLogin({ uid: user.uid, ...profile });
         createUserProfile(user.uid, profile).catch(e => console.error(e));
       } else {
@@ -31,7 +39,7 @@ export default function Login({ onLogin }) {
           const profile = await Promise.race([profilePromise, timeout]);
           onLogin({ uid: user.uid, ...profile });
         } catch {
-          onLogin({ uid: user.uid, username: "NINJA", xp: 0, dailyExecutions: 0 });
+          onLogin({ uid: user.uid, username: "NEW_USER", xp: 0, dailyExecutions: 0 });
         }
       }
     } catch (err) {
@@ -43,7 +51,6 @@ export default function Login({ onLogin }) {
   return (
     <div style={ui.screen}>
       <div style={ui.card}>
-        {/* HEADER SECTION: Bundles logo and title to prevent overlapping */}
         <div style={ui.headerSection}>
           <div style={{ 
             animation: `spin ${isLoading ? '1s' : '5s'} linear infinite`,
@@ -93,7 +100,8 @@ export default function Login({ onLogin }) {
           </button>
           
           <p onClick={() => { setIsRegistering(!isRegistering); setError(""); }} style={ui.toggleText}>
-            {isRegistering ? "BACK TO LOGIN" : "NEW SUBJECT? REGISTER"}
+            {/* UPDATED: Changed "NEW SUBJECT" to "NEW USER" */}
+            {isRegistering ? "BACK TO LOGIN" : "NEW USER? REGISTER"}
           </p>
         </form>
       </div>
@@ -102,89 +110,17 @@ export default function Login({ onLogin }) {
   );
 }
 
+// ... Styles (ui object) stay exactly as you had them ...
 const ui = {
-  screen: { 
-    height: '100vh', 
-    width: '100vw', 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    backgroundColor: '#020617', 
-    color: '#fff', 
-    fontFamily: 'monospace',
-    overflow: 'hidden'
-  },
-  card: { 
-    width: '100%', 
-    maxWidth: '320px', 
-    textAlign: 'center',
-    padding: '20px'
-  },
-  headerSection: {
-    marginBottom: '40px' // This pushes the inputs down away from the logo
-  },
-  logoText: { 
-    fontSize: '28px', 
-    fontStyle: 'italic', 
-    marginTop: '15px',
-    fontWeight: '900',
-    letterSpacing: '-1px'
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  input: { 
-    width: '100%', 
-    padding: '14px', 
-    marginBottom: '12px', 
-    borderRadius: '8px', 
-    border: '1px solid #1e293b', 
-    backgroundColor: '#000', 
-    color: '#22c55e', 
-    outline: 'none',
-    boxSizing: 'border-box'
-  },
-  primaryBtn: { 
-    width: '100%', 
-    padding: '14px', 
-    borderRadius: '8px', 
-    backgroundColor: '#ef4444', 
-    color: '#fff', 
-    border: 'none', 
-    fontWeight: '900', 
-    cursor: 'pointer',
-    marginTop: '10px'
-  },
-  appleBtn: { 
-    width: '100%', 
-    padding: '12px', 
-    borderRadius: '8px', 
-    backgroundColor: '#fff', 
-    color: '#000', 
-    border: 'none', 
-    fontWeight: '700', 
-    cursor: 'pointer' 
-  },
-  divider: { 
-    margin: '20px 0', 
-    fontSize: '10px', 
-    color: '#475569',
-    fontWeight: 'bold'
-  },
-  errorText: { 
-    color: '#ef4444', 
-    fontSize: '11px', 
-    fontWeight: 'bold',
-    marginBottom: '10px' 
-  },
-  toggleText: { 
-    marginTop: '25px', 
-    fontSize: '11px', 
-    color: '#64748b', 
-    cursor: 'pointer', 
-    textDecoration: 'underline' 
-  }
+  screen: { height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020617', color: '#fff', fontFamily: 'monospace', overflow: 'hidden' },
+  card: { width: '100%', maxWidth: '320px', textAlign: 'center', padding: '20px' },
+  headerSection: { marginBottom: '40px' },
+  logoText: { fontSize: '28px', fontStyle: 'italic', marginTop: '15px', fontWeight: '900', letterSpacing: '-1px' },
+  form: { display: 'flex', flexDirection: 'column' },
+  input: { width: '100%', padding: '14px', marginBottom: '12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#000', color: '#22c55e', outline: 'none', boxSizing: 'border-box' },
+  primaryBtn: { width: '100%', padding: '14px', borderRadius: '8px', backgroundColor: '#ef4444', color: '#fff', border: 'none', fontWeight: '900', cursor: 'pointer', marginTop: '10px' },
+  appleBtn: { width: '100%', padding: '12px', borderRadius: '8px', backgroundColor: '#fff', color: '#000', border: 'none', fontWeight: '700', cursor: 'pointer' },
+  divider: { margin: '20px 0', fontSize: '10px', color: '#475569', fontWeight: 'bold' },
+  errorText: { color: '#ef4444', fontSize: '11px', fontWeight: 'bold', marginBottom: '10px' },
+  toggleText: { marginTop: '25px', fontSize: '11px', color: '#64748b', cursor: 'pointer', textDecoration: 'underline' }
 };
-
-
