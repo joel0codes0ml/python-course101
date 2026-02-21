@@ -1,165 +1,225 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { updateUserProfile } from "../firebase";
-import { increment } from "firebase/firestore";
+import React, { useState, useEffect } from "react";
+import Editor from "react-simple-code-editor";
+import { highlight, languages as prismLangs } from "prismjs/components/prism-core";
 
-import Editor from 'react-simple-code-editor';
-import { highlight, languages as prismLangs } from 'prismjs/components/prism-core';
-// Import all 8 language syntaxes
-import 'prismjs/components/prism-clike';
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-c';
-import 'prismjs/components/prism-cpp';
-import 'prismjs/components/prism-go';
-import 'prismjs/components/prism-sql';
-import 'prismjs/components/prism-r';
-import 'prismjs/components/prism-markup'; // For HTML/CSS
+import "prismjs/components/prism-clike";
+import "prismjs/components/prism-javascript";
+import "prismjs/components/prism-python";
+import "prismjs/components/prism-c";
+import "prismjs/components/prism-cpp";
+import "prismjs/components/prism-go";
+import "prismjs/components/prism-sql";
+import "prismjs/components/prism-markup";
+import "prismjs/components/prism-css";
+import "prismjs/components/prism-r";
 
-import 'prismjs/themes/prism-tomorrow.css'; 
+import "prismjs/themes/prism-tomorrow.css";
 
-const SECTOR_MAP = {
-  python: 'data', r: 'data', sqlite3: 'data',
-  html: 'web', css: 'web', javascript: 'web',
-  c: 'sys', cpp: 'sys', go: 'sys'
-};
-
-const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode }) => {
-  const [code, setCode] = useState(""); 
+const CodeEditor = ({ language }) => {
+  const [code, setCode] = useState("");
   const [output, setOutput] = useState("");
-  const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState("");
-  const [pyodide, setPyodide] = useState(window.pyodideInstance || null);
-  const [engineStatus, setEngineStatus] = useState("CONNECTED");
+  const [isRunning, setIsRunning] = useState(false);
+  const [pyodide, setPyodide] = useState(null);
 
-  const successSound = useRef(new Audio("https://www.soundjay.com/misc/sounds/magic-chime-01.mp3"));
-
+  // Load Pyodide once (for Python)
   useEffect(() => {
-    // Only boot Pyodide if the user actually switches to Python
-    const loadPython = async () => {
-      if (language === 'python' && !pyodide) {
-        setEngineStatus("BOOTING_PYTHON...");
-        if (!window.loadPyodide) {
-          const script = document.createElement("script");
-          script.src = "https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js";
-          document.head.appendChild(script);
-          await new Promise(r => script.onload = r);
+    async function loadEngine() {
+      if (window.loadPyodide) {
+        try {
+          const instance = await window.loadPyodide();
+          setPyodide(instance);
+        } catch (err) {
+          console.error("Failed to load Pyodide:", err);
         }
-        const py = await window.loadPyodide();
-        window.pyodideInstance = py;
-        setPyodide(py);
-        setEngineStatus("PYTHON_READY");
-      } else {
-        setEngineStatus("REMOTE_ENGINE_ACTIVE");
       }
-    };
-    loadPython();
-  }, [language]);
+    }
+    loadEngine();
+  }, []);
 
+  // Reset editor when language changes
   useEffect(() => {
-    setCode(starterCode || ""); 
+    setCode("");
     setOutput("");
     setError("");
-  }, [starterCode, language]);
+  }, [language]);
 
   const execute = async () => {
-    if (!code.trim()) return;
-    if (!user?.isPro && (user?.dailyExecutions >= 25)) {
-      setIsPaystackOpen(true);
-      return; 
-    }
-
     setIsRunning(true);
-    setOutput("SYSTEM: Executing...");
+    setOutput("⚙️ Running...");
     setError("");
 
     try {
-      let result = "";
+      // PYTHON (Local via Pyodide)
+      if (language === "python") {
+        if (!pyodide) {
+          setError("Python engine still loading...");
+          setIsRunning(false);
+          return;
+        }
 
-      // 1. LOCAL PYTHON EXECUTION
-      if (language === "python" && pyodide) {
-        await pyodide.runPythonAsync(`import sys, io\nsys.stdout = io.StringIO()`);
+        pyodide.runPython(`
+import sys, io
+sys.stdout = io.StringIO()
+        `);
+
         await pyodide.runPythonAsync(code);
-        result = pyodide.runPython("sys.stdout.getvalue()");
-      } 
-      // 2. WEB LANGUAGES (No execution needed, just a success simulation)
-      else if (language === "html" || language === "css") {
-        result = "DOM_RENDER_SUCCESSFUL: Visual output updated.";
+
+        const result = pyodide.runPython("sys.stdout.getvalue()");
+        setOutput(result || "Program finished.");
       }
-      // 3. REMOTE EXECUTION (C, CPP, GO, R, SQL)
+
+      // OTHER LANGUAGES (Remote via Piston)
       else {
-        const response = await fetch("https://emkc.org/api/v2/piston/execute", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            language: language === "sqlite3" ? "sql" : language,
-            version: "*",
-            files: [{ content: code }],
-          }),
-        });
+        const response = await fetch(
+          "https://emkc.org/api/v2/piston/execute",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              language: language === "sqlite3" ? "sql" : language,
+              version: "*",
+              files: [{ content: code }],
+            }),
+          }
+        );
+
         const data = await response.json();
-        if (data.run.stderr) throw new Error(data.run.stderr);
-        result = data.run.output;
+
+        if (data.run.stderr) {
+          setError(data.run.stderr);
+        } else {
+          setOutput(data.run.output || "Program finished.");
+        }
       }
-
-      // UI/XP Updates
-      successSound.current.play().catch(() => {});
-      const sector = SECTOR_MAP[language] || 'web';
-      const nextRuns = (user?.dailyExecutions || 0) + 1;
-      
-      setUser(prev => ({ 
-        ...prev, dailyExecutions: nextRuns, xp: (prev.xp || 0) + 25 
-      }));
-
-      setOutput(`${result}\n\n✨ EXECUTION COMPLETE (+25 XP)`);
-
-      updateUserProfile(user.uid, {
-        dailyExecutions: nextRuns,
-        xp: increment(25),
-        [`sectorProgress.${sector}`]: increment(5)
-      });
-
     } catch (err) {
-      setError(err.message.includes("fetch") ? "❌ API TIMEOUT: Try again." : `❌ ${err.message}`);
-    } finally {
-      setIsRunning(false);
+      setError(err.message || "Execution error.");
     }
+
+    setIsRunning(false);
   };
 
   return (
     <div style={ui.container}>
-      <div style={ui.editorHeader}>
-        <span style={ui.langTag}>{language.toUpperCase()} // {engineStatus}</span>
+      <div style={ui.header}>
+        {language.toUpperCase()} ENGINE
       </div>
 
-      <div style={ui.scrollArea}>
+      <div style={ui.editorWrapper}>
         <Editor
           value={code}
           onValueChange={setCode}
-          highlight={code => highlight(code, 
-            prismLangs[language === 'sqlite3' ? 'sql' : language === 'html' ? 'markup' : language] || prismLangs.js
-          )}
-          padding={25}
-          style={ui.editorFont}
+          highlight={(code) =>
+            highlight(
+              code,
+              prismLangs[language === "sqlite3" ? "sql" : language] ||
+                prismLangs.python
+            )
+          }
+          padding={20}
+          style={ui.editor}
         />
       </div>
 
-      <div style={ui.footer}>
-        <button onClick={execute} disabled={isRunning} style={ui.runBtn}>
-          {isRunning ? "PROCESSING..." : "RUN_CODE"}
+      <div style={ui.buttonArea}>
+        <button onClick={execute} disabled={isRunning} style={ui.button}>
+          {isRunning ? "Running..." : "Run Code"}
         </button>
       </div>
 
-      <div style={ui.outputBox}>
-        <div style={ui.terminalLabel}>CONSOLE_OUTPUT</div>
-        <pre style={{...ui.pre, color: error ? '#ef4444' : '#22c55e'}}>
-          {error || output || "> ready_"}
-        </pre>
+      <div style={ui.terminal}>
+        <div style={ui.terminalLabel}>TERMINAL</div>
+
+        {output && (
+          <pre style={ui.stdout}>{output}</pre>
+        )}
+
+        {error && (
+          <pre style={ui.stderr}>{error}</pre>
+        )}
+
+        {!output && !error && (
+          <pre style={ui.idle}>{"> Ready..."}</pre>
+        )}
       </div>
     </div>
   );
 };
 
-// ... keep your UI styles the same ...
+const ui = {
+  container: {
+    display: "flex",
+    flexDirection: "column",
+    height: "100%",
+    backgroundColor: "#000",
+    borderLeft: "1px solid #1e293b",
+  },
+  header: {
+    padding: "12px 20px",
+    backgroundColor: "#0f172a",
+    color: "#64748b",
+    fontSize: "12px",
+    fontWeight: "bold",
+    borderBottom: "1px solid #1e293b",
+  },
+  editorWrapper: {
+    flex: 1,
+    overflowY: "auto",
+  },
+  editor: {
+    fontFamily: '"Fira Code", monospace',
+    fontSize: 14,
+    minHeight: "100%",
+    backgroundColor: "#000",
+    color: "#fff",
+  },
+  buttonArea: {
+    padding: "15px 20px",
+    borderTop: "1px solid #1e293b",
+    backgroundColor: "#000",
+    display: "flex",
+    justifyContent: "flex-end",
+  },
+  button: {
+    backgroundColor: "#22c55e",
+    color: "#000",
+    border: "none",
+    padding: "10px 25px",
+    borderRadius: "6px",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+  terminal: {
+    height: "200px",
+    backgroundColor: "#020617",
+    borderTop: "1px solid #1e293b",
+    padding: "20px",
+    overflowY: "auto",
+  },
+  terminalLabel: {
+    fontSize: "10px",
+    fontWeight: "bold",
+    color: "#475569",
+    marginBottom: "10px",
+  },
+  stdout: {
+    color: "#22c55e",
+    whiteSpace: "pre-wrap",
+    margin: 0,
+  },
+  stderr: {
+    color: "#ef4444",
+    whiteSpace: "pre-wrap",
+    margin: 0,
+  },
+  idle: {
+    color: "#64748b",
+    whiteSpace: "pre-wrap",
+    margin: 0,
+  },
+};
+
+export default CodeEditor;
 
 
 
