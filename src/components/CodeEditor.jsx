@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { updateUserProfile } from "../firebase";
 import { increment } from "firebase/firestore";
 
-// Syntax Highlighting Imports
 import Editor from 'react-simple-code-editor';
 import { highlight, languages as prismLangs } from 'prismjs/components/prism-core';
 import 'prismjs/components/prism-clike';
@@ -10,7 +9,6 @@ import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-python';
 import 'prismjs/themes/prism-tomorrow.css'; 
 
-// SECTOR MAPPING - Matches your App.jsx Categories
 const SECTOR_MAP = {
   python: 'data',
   r: 'data',
@@ -30,7 +28,6 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode })
 
   const successSound = new Audio("https://www.soundjay.com/misc/sounds/magic-chime-01.mp3");
 
-  // Forces the editor to be blank when a lesson loads
   useEffect(() => {
     setCode(""); 
     setOutput("");
@@ -38,15 +35,14 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode })
   }, [starterCode, language]);
 
   const execute = async () => {
-    // 1. Validation: Prevent empty runs
     if (!code.trim()) {
         setError("⚠️ SYSTEM: Editor is empty. Type your solution.");
         return;
     }
 
-    // 2. Pro/Limit Check
-    if (!user?.isPro && (user?.dailyExecutions || 0) >= 12) {
-      setError("⛔ LIMIT REACHED: 12/12 runs used today.");
+    // CHECK AGAINST 25 RUNS
+    if (!user?.isPro && (user?.dailyExecutions || 0) >= 25) {
+      setError("⛔ LIMIT REACHED: 25/25 runs used today.");
       setIsPaystackOpen(true);
       return; 
     }
@@ -70,14 +66,11 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode })
       const result = data.run.output || "";
       const nextRuns = (user?.dailyExecutions || 0) + 1;
 
-      // 3. Handle Syntax Errors
       if (data.run.stderr) {
         setError(data.run.stderr);
         updateUserProfile(user.uid, { dailyExecutions: nextRuns });
         setUser(prev => ({ ...prev, dailyExecutions: nextRuns }));
       } 
-      
-      // 4. Handle Successful Execution (Reward XP)
       else {
         successSound.volume = 0.4;
         successSound.play().catch(e => console.log("Audio block", e));
@@ -88,14 +81,12 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode })
         const currentProgress = user?.sectorProgress?.[sector] || 0;
         const newProgress = Math.min(100, currentProgress + 5);
 
-        // Update Database
         const updates = {
             dailyExecutions: nextRuns,
             xp: increment(25),
             [`sectorProgress.${sector}`]: newProgress
         };
 
-        // Update Local State
         setUser(prev => ({ 
             ...prev, 
             dailyExecutions: nextRuns,
@@ -130,11 +121,12 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode })
 
       <div style={ui.footer}>
         <button 
-          onClick={!user?.isPro && (user?.dailyExecutions >= 12) ? () => setIsPaystackOpen(true) : execute} 
+          // CHECK AGAINST 25 RUNS
+          onClick={!user?.isPro && (user?.dailyExecutions >= 25) ? () => setIsPaystackOpen(true) : execute} 
           disabled={isRunning}
-          style={!user?.isPro && (user?.dailyExecutions >= 12) ? ui.upgradeBtn : ui.runBtn}
+          style={!user?.isPro && (user?.dailyExecutions >= 25) ? ui.upgradeBtn : ui.runBtn}
         >
-          {isRunning ? "PROCESSING..." : !user?.isPro && (user?.dailyExecutions >= 12) ? "🚀 UNLOCK PRO" : "EXECUTE CODE"}
+          {isRunning ? "PROCESSING..." : !user?.isPro && (user?.dailyExecutions >= 25) ? "🚀 UNLOCK PRO" : "EXECUTE CODE"}
         </button>
       </div>
 
