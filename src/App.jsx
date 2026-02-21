@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import Mascot from "./components/Mascot.jsx";
 import Login from "./Login.jsx";
-import Profile from "./components/Profile.jsx"; // IMPORTED
+import Profile from "./components/Profile.jsx"; 
 import CodeEditor from "./components/CodeEditor.jsx";
 import Leaderboard from "./components/Leaderboard.jsx";
 import { onAuthChange, getUserProfile, updateUserProfile, logout, subscribeLeaderboard } from "./firebase";
@@ -17,7 +17,6 @@ import { rLessons } from "./courses/Rlessons.js";
 import { htmlLessons } from "./courses/html.js";
 import { cssLessons } from "./courses/css.js";
 
-// SECTOR DEFINITIONS
 const SECTORS = [
   { id: 'web', name: 'WEB DEV', icon: '🌐' },
   { id: 'data', name: 'DATA SCIENCE', icon: '📊' },
@@ -38,7 +37,7 @@ const languages = [
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [needsProfile, setNeedsProfile] = useState(false); // NEW: Onboarding state
+  const [needsProfile, setNeedsProfile] = useState(false); 
   const [initializing, setInitializing] = useState(true);
   const [leaderboard, setLeaderboard] = useState([]);
   const [activeSector, setActiveSector] = useState("web");
@@ -46,7 +45,8 @@ export default function App() {
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [isPaystackOpen, setIsPaystackOpen] = useState(false); 
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
-  const RUN_LIMIT = 12;
+  
+  const RUN_LIMIT = 25; // BUMPED TO 25
 
   useEffect(() => {
     let unsubscribeLeader;
@@ -55,7 +55,6 @@ export default function App() {
         try {
           const profile = await getUserProfile(firebaseUser.uid);
           
-          // CHECK IF USER HAS COMPLETED SETUP
           if (!profile || !profile.setupComplete) {
             setNeedsProfile(true);
           } else {
@@ -106,13 +105,10 @@ export default function App() {
     </div>
   );
 
-  // 1. SHOW LOGIN IF NOT AUTHENTICATED
   if (!user) return <Login onLogin={setUser} />;
-
-  // 2. SHOW PROFILE SETUP IF SETUP IS NOT COMPLETE
+  
   if (needsProfile) return <Profile onComplete={() => setNeedsProfile(false)} />;
 
-  // 3. SHOW WORKSPACE IF LOGGED IN & SETUP COMPLETE
   const filteredLanguages = languages.filter(l => l.sector === activeSector);
   const lessons = currentLanguage?.lessons || [];
   const current = lessons[currentLessonIndex] || { title: "Course Locked", content: "This module is being calibrated." };
@@ -121,11 +117,11 @@ export default function App() {
   return (
     <PayPalScriptProvider options={{ "client-id": "test", currency: "USD" }}>
       <div style={styles.appContainer}>
-        {/* TOP NAVIGATION BAR */}
         <nav style={styles.nav}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <Mascot />
-            <span style={styles.logo}>STUDENT<span style={{ color: '#ef4444' }}>LABS</span></span>
+            {/* BRANDING CHANGED TO ZENINLABS */}
+            <span style={styles.logo}>ZENIN<span style={{ color: '#ef4444' }}>LABS</span></span>
             {!user?.isPro ? (
               <button onClick={() => setIsPaystackOpen(true)} style={styles.upgradeBtn}>⚡ GO PRO</button>
             ) : (
@@ -144,7 +140,6 @@ export default function App() {
         </nav>
 
         <div style={styles.workspace}>
-          {/* SIDEBAR WITH SECTOR SCROLL */}
           <aside style={styles.sidebar}>
             <div style={styles.sectorScroll}>
               {SECTORS.map(s => (
@@ -185,7 +180,6 @@ export default function App() {
             </div>
           </aside>
 
-          {/* LESSON PANEL */}
           <main style={styles.lessonPanel}>
             <div style={styles.moduleTag}>{currentLanguage?.name.toUpperCase()} • {currentLessonIndex + 1}</div>
             <h1 style={styles.lessonTitle}>{current.title}</h1>
@@ -207,7 +201,6 @@ export default function App() {
             </div>
           </main>
 
-          {/* CODE EDITOR PANEL */}
           <section style={styles.editorPanel}>
             <CodeEditor 
               user={user} 
