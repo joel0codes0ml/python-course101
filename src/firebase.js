@@ -83,6 +83,7 @@ export const logout = () => signOut(auth);
 
 // ================= USER DATA & PROFILES =================
 
+/** Initialize a new user profile */
 export const createUserProfile = async (uid, data) => {
   const ref = doc(db, "users", uid);
   return setDoc(ref, {
@@ -99,12 +100,19 @@ export const createUserProfile = async (uid, data) => {
   }, { merge: true });
 };
 
+/** Update specific fields in a user profile (e.g., XP, bio, progress) */
+export const updateUserProfile = async (uid, data) => {
+  const ref = doc(db, "users", uid);
+  return updateDoc(ref, data);
+};
+
+/** One-time fetch of user profile */
 export const getUserProfile = async (uid) => {
   const snap = await getDoc(doc(db, "users", uid));
   return snap.exists() ? snap.data() : null;
 };
 
-/** Listen for real-time profile changes (XP, streaks, etc.) */
+/** Listen for real-time profile changes */
 export const subscribeToUserData = (uid, callback) => {
   return onSnapshot(doc(db, "users", uid), (snap) => {
     if (snap.exists()) callback(snap.data());
