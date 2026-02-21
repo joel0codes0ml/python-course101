@@ -22,12 +22,10 @@ import {
   query,
   orderBy,
   limit,
-  where,
   persistentLocalCache,
   persistentMultipleTabManager
 } from "firebase/firestore";
 
-// SECURITY: Move these to Vercel Environment Variables (.env) for production!
 const firebaseConfig = {
   apiKey: "AIzaSyC4iHWhpIWiDrkDK-bgYUHJcui_7Y54pwk",
   authDomain: "zeninlabs-546ab.firebaseapp.com",
@@ -40,11 +38,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Persist session across refreshes
 setPersistence(auth, browserLocalPersistence)
   .catch((err) => console.error("Auth Persistence Error:", err));
 
-// Firestore with multi-tab offline support
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ 
     tabManager: persistentMultipleTabManager() 
@@ -57,27 +53,18 @@ export const onAuthChange = (callback) => onAuthStateChanged(auth, callback);
 
 export const signUpWithEmail = async (email, password, username) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
+  const photo = `https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=${username}`;
   
-  await updateProfile(cred.user, { 
-    displayName: username,
-    photoURL: `https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=${username}`
-  });
+  await updateProfile(cred.user, { displayName: username, photoURL: photo });
   
-  await createUserProfile(cred.user.uid, { 
-    username, 
-    email,
-    photoURL: cred.user.photoURL 
-  });
+  // We trigger the creation, but we don't necessarily need to "await" it 
+  // if we want the UI to snap to the dashboard immediately.
+  createUserProfile(cred.user.uid, { username, email, photoURL: photo });
   
   return cred.user;
 };
 
 export const loginWithEmail = (email, password) => signInWithEmailAndPassword(auth, email, password);
-
-export const loginWithApple = async () => {
-  const provider = new OAuthProvider('apple.com');
-  return signInWithPopup(auth, provider);
-};
 
 export const logout = () => signOut(auth);
 
@@ -85,17 +72,18 @@ export const logout = () => signOut(auth);
 
 export const createUserProfile = async (uid, data) => {
   const ref = doc(db, "users", uid);
+  const tempId = Math.floor(1000 + Math.random() * 9000);
+
   return setDoc(ref, {
     xp: 0,
-    level: 1,
-    streak: 0,
-    gems: 0,
-    bio: "New Student",
-    links: { instagram: "", linkedin: "", youtube: "" }, // UPDATED LINKS
-    completedLessons: [],
+    dailyExecutions: 0, // Track the 25 runs limit
+    streak: 1,
+    bio: "", 
+    username: data.username || `NINJA_${tempId}`,
+    links: { instagram: "", linkedin: "", youtube: "" },
     sectorProgress: { web: 0, data: 0, ai: 0, sys: 0 },
+    setupComplete: true, // SILENT ONBOARDING: Set to true immediately
     createdAt: new Date().toISOString(),
-    setupComplete: false, // Flag to trigger onboarding
     ...data,
   }, { merge: true });
 };
@@ -110,6 +98,7 @@ export const getUserProfile = async (uid) => {
   return snap.exists() ? snap.data() : null;
 };
 
+// Real-time listener so XP and Runs update without refreshing
 export const subscribeToUserData = (uid, callback) => {
   return onSnapshot(doc(db, "users", uid), (snap) => {
     if (snap.exists()) callback(snap.data());
@@ -119,11 +108,7 @@ export const subscribeToUserData = (uid, callback) => {
 // ================= GLOBAL DATA =================
 
 export const subscribeLeaderboard = (callback) => {
-  const q = query(
-    collection(db, "users"), 
-    orderBy("xp", "desc"), 
-    limit(50) 
-  );
+  const q = query(collection(db, "users"), orderBy("xp", "desc"), limit(50));
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
   });
