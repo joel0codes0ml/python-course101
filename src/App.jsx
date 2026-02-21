@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import Mascot from "./components/Mascot.jsx";
 import Login from "./Login.jsx";
+import Profile from "./components/Profile.jsx"; // IMPORTED
 import CodeEditor from "./components/CodeEditor.jsx";
 import Leaderboard from "./components/Leaderboard.jsx";
 import { onAuthChange, getUserProfile, updateUserProfile, logout, subscribeLeaderboard } from "./firebase";
@@ -33,14 +34,14 @@ const languages = [
   { name: "Go", lessons: goLessons, id: "go", sector: "sys" },
   { name: "HTML", lessons: htmlLessons, id: "html", sector: "web" },
   { name: "CSS", lessons: cssLessons, id: "css", sector: "web" }
-  // ADD NEW COURSES HERE: { name: "Rust", lessons: rustLessons, id: "rust", sector: "sys" }
 ];
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [needsProfile, setNeedsProfile] = useState(false); // NEW: Onboarding state
   const [initializing, setInitializing] = useState(true);
   const [leaderboard, setLeaderboard] = useState([]);
-  const [activeSector, setActiveSector] = useState("web"); // NEW: Sidebar Category
+  const [activeSector, setActiveSector] = useState("web");
   const [currentLanguage, setCurrentLanguage] = useState(languages.find(l => l.sector === "web"));
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [isPaystackOpen, setIsPaystackOpen] = useState(false); 
@@ -53,6 +54,14 @@ export default function App() {
       if (firebaseUser) {
         try {
           const profile = await getUserProfile(firebaseUser.uid);
+          
+          // CHECK IF USER HAS COMPLETED SETUP
+          if (!profile || !profile.setupComplete) {
+            setNeedsProfile(true);
+          } else {
+            setNeedsProfile(false);
+          }
+
           const today = new Date().toDateString();
           const lastSeen = profile?.lastLoginDate || "";
           let streak = profile?.streak || 1;
@@ -67,10 +76,12 @@ export default function App() {
           setUser({ uid: firebaseUser.uid, xp: 0, dailyExecutions: 0, ...profile, streak });
           unsubscribeLeader = subscribeLeaderboard((data) => setLeaderboard(data));
         } catch (err) {
-          setUser({ uid: firebaseUser.uid, username: "NINJA", xp: 0 });
+          console.error("Auth Error:", err);
+          setUser({ uid: firebaseUser.uid, username: "STUDENT", xp: 0 });
         }
       } else {
         setUser(null);
+        setNeedsProfile(false);
       }
       setInitializing(false);
     });
@@ -88,9 +99,6 @@ export default function App() {
     alert("PRO ACTIVATED: Unlimited runs unlocked!");
   };
 
-  // Filter languages based on top sector scroll
-  const filteredLanguages = languages.filter(l => l.sector === activeSector);
-
   if (initializing) return (
     <div style={styles.loading}>
       <div className="sh-logo" style={{fontSize: '50px'}}>🌀</div>
@@ -98,8 +106,14 @@ export default function App() {
     </div>
   );
 
+  // 1. SHOW LOGIN IF NOT AUTHENTICATED
   if (!user) return <Login onLogin={setUser} />;
 
+  // 2. SHOW PROFILE SETUP IF SETUP IS NOT COMPLETE
+  if (needsProfile) return <Profile onComplete={() => setNeedsProfile(false)} />;
+
+  // 3. SHOW WORKSPACE IF LOGGED IN & SETUP COMPLETE
+  const filteredLanguages = languages.filter(l => l.sector === activeSector);
   const lessons = currentLanguage?.lessons || [];
   const current = lessons[currentLessonIndex] || { title: "Course Locked", content: "This module is being calibrated." };
   const runsLeft = Math.max(0, RUN_LIMIT - (user?.dailyExecutions || 0));
@@ -111,7 +125,7 @@ export default function App() {
         <nav style={styles.nav}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <Mascot />
-            <span style={styles.logo}>ZENIN<span style={{ color: '#ef4444' }}>LABS</span></span>
+            <span style={styles.logo}>STUDENT<span style={{ color: '#ef4444' }}>LABS</span></span>
             {!user?.isPro ? (
               <button onClick={() => setIsPaystackOpen(true)} style={styles.upgradeBtn}>⚡ GO PRO</button>
             ) : (
@@ -178,6 +192,7 @@ export default function App() {
             <div style={styles.contentBox}>
               <p style={styles.lessonText}>{current.content}</p>
             </div>
+            <br />
             
             <div style={styles.solutionSection}>
                 <h4 style={styles.solLabel}>GOAL OUTPUT</h4>
@@ -205,11 +220,11 @@ export default function App() {
           </section>
         </div>
 
-        {/* MODALS REMAIN THE SAME... */}
+        {/* MODALS */}
         {isPaystackOpen && (
           <div style={styles.modalOverlay}>
             <div style={styles.modalCard}>
-              <h2 style={{ color: '#fff', fontSize: '20px' }}>Unlock Zenin Pro</h2>
+              <h2 style={{ color: '#fff', fontSize: '20px' }}>Unlock Student Pro</h2>
               <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px' }}>Unlimited code runs & all certificates.</p>
               <div style={styles.paymentMethodBox}>
                   <span style={styles.methodLabel}>KENYA (M-PESA / CARD)</span>
@@ -253,7 +268,6 @@ export default function App() {
   );
 }
 
-// Sub-component for Tiered Leaderboard
 const TierColumn = ({ title, xp, data, color }) => (
   <div style={styles.tierCol}>
     <div style={{...styles.tierHeader, borderBottom: `2px solid ${color}`}}>
@@ -263,7 +277,7 @@ const TierColumn = ({ title, xp, data, color }) => (
     <div style={styles.tierList}>
       {data.map((ninja, i) => (
         <div key={i} style={styles.tierRow}>
-          <span style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{i+1}. {ninja.username || "NINJA"}</span>
+          <span style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{i+1}. {ninja.username || "STUDENT"}</span>
           <span style={{color: color, fontWeight: 'bold'}}>{ninja.xp}</span>
         </div>
       ))}
@@ -272,9 +286,7 @@ const TierColumn = ({ title, xp, data, color }) => (
   </div>
 );
 
-// EXTENDED STYLES
 const styles = {
-  // ... (keep your existing styles)
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#020617', color: '#fff', overflow: 'hidden', fontFamily: 'monospace' },
   nav: { height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', backgroundColor: '#000', borderBottom: '1px solid #1e293b' },
   logo: { fontWeight: '900', fontStyle: 'italic', fontSize: '20px' },
@@ -290,28 +302,8 @@ const styles = {
   logoutBtn: { background: 'none', border: 'none', color: '#475569', fontSize: '11px', cursor: 'pointer' },
   workspace: { display: 'flex', flex: 1, overflow: 'hidden' },
   sidebar: { width: '220px', backgroundColor: '#000', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column' },
-  
-  // NEW STYLES FOR SECTOR BAR
-  sectorScroll: { 
-    display: 'flex', 
-    overflowX: 'auto', 
-    backgroundColor: '#020617', 
-    borderBottom: '1px solid #1e293b',
-    scrollbarWidth: 'none'
-  },
-  sectorTab: {
-    flex: '0 0 73px',
-    padding: '12px 0',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '4px',
-    transition: '0.2s'
-  },
-
+  sectorScroll: { display: 'flex', overflowX: 'auto', backgroundColor: '#020617', borderBottom: '1px solid #1e293b', scrollbarWidth: 'none' },
+  sectorTab: { flex: '0 0 73px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', transition: '0.2s' },
   curriculumHeader: { padding: '24px 16px 12px', fontSize: '10px', fontWeight: '900', color: '#475569' },
   langList: { flex: 1, overflowY: 'auto' },
   langBtn: { width: '100%', textAlign: 'left', padding: '14px 20px', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '800', transition: '0.2s' },
