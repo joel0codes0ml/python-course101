@@ -1,222 +1,189 @@
-import React, { useState, useEffect } from "react";
-import Editor from "react-simple-code-editor";
-import { highlight, languages as prismLangs } from "prismjs/components/prism-core";
+import React, { useState, useEffect, useRef } from 'react';
+import { updateUserProfile } from "../firebase";
+import { increment } from "firebase/firestore";
+import Editor from 'react-simple-code-editor';
+import { highlight, languages as prismLangs } from 'prismjs/components/prism-core';
 
-import "prismjs/components/prism-clike";
-import "prismjs/components/prism-javascript";
-import "prismjs/components/prism-python";
-import "prismjs/components/prism-c";
-import "prismjs/components/prism-cpp";
-import "prismjs/components/prism-go";
-import "prismjs/components/prism-sql";
-import "prismjs/components/prism-markup";
-import "prismjs/components/prism-css";
-import "prismjs/components/prism-r";
+// Ensure syntax highlighting support for all 8 languages
+import 'prismjs/components/prism-clike';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-c';
+import 'prismjs/components/prism-cpp';
+import 'prismjs/components/prism-go';
+import 'prismjs/components/prism-sql';
+import 'prismjs/components/prism-r';
+import 'prismjs/components/prism-markup'; // This handles HTML
+import 'prismjs/components/prism-css';
+import 'prismjs/themes/prism-tomorrow.css'; 
 
-import "prismjs/themes/prism-tomorrow.css";
-
-const CodeEditor = ({ language }) => {
-  const [code, setCode] = useState("");
+const CodeEditor = ({ user, setUser, setIsPaystackOpen, language, starterCode }) => {
+  const [code, setCode] = useState(""); 
   const [output, setOutput] = useState("");
-  const [error, setError] = useState("");
   const [isRunning, setIsRunning] = useState(false);
-  const [pyodide, setPyodide] = useState(null);
+  const [error, setError] = useState("");
+  const [pyodide, setPyodide] = useState(window.pyodideInstance || null);
+  const [status, setStatus] = useState("READY");
 
-  // Load Pyodide once (for Python)
+  const successSound = useRef(new Audio("https://www.soundjay.com/misc/sounds/magic-chime-01.mp3"));
+
+  // --- ENGINE LOADER ---
   useEffect(() => {
-    async function loadEngine() {
-      if (window.loadPyodide) {
-        try {
-          const instance = await window.loadPyodide();
-          setPyodide(instance);
-        } catch (err) {
-          console.error("Failed to load Pyodide:", err);
+    if (language === 'python' && !pyodide) {
+      const loadPy = async () => {
+        setStatus("BOOTING_PYTHON...");
+        if (!window.loadPyodide) {
+          const s = document.createElement("script");
+          s.src = "https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js";
+          document.head.appendChild(s);
+          await new Promise(r => s.onload = r);
         }
-      }
+        try {
+          const py = await window.loadPyodide();
+          window.pyodideInstance = py;
+          setPyodide(py);
+          setStatus("PYTHON_READY");
+        } catch (e) {
+          setError("Failed to load local Python engine.");
+        }
+      };
+      loadPy();
+    } else {
+      setStatus("ENGINE_ACTIVE");
     }
-    loadEngine();
-  }, []);
+  }, [language, pyodide]);
 
-  // Reset editor when language changes
+  // Sync code with curriculum when lesson changes
   useEffect(() => {
-    setCode("");
+    setCode(starterCode || "");
     setOutput("");
     setError("");
-  }, [language]);
+  }, [starterCode, language]);
 
   const execute = async () => {
+    if (!code.trim() || isRunning) return;
+
+    // Check Run Limits for Free Tier
+    if (!user?.isPro && (user?.dailyExecutions >= 25)) {
+      setIsPaystackOpen(true);
+      return;
+    }
+
     setIsRunning(true);
-    setOutput("⚙️ Running...");
+    setOutput("SYSTEM: Initializing execution...");
     setError("");
 
     try {
-      // PYTHON (Local via Pyodide)
-      if (language === "python") {
-        if (!pyodide) {
-          setError("Python engine still loading...");
-          setIsRunning(false);
-          return;
-        }
+      let result = "";
 
-        pyodide.runPython(`
-import sys, io
-sys.stdout = io.StringIO()
-        `);
-
+      // 1. PYTHON (Local Engine)
+      if (language === "python" && pyodide) {
+        await pyodide.runPythonAsync(`import sys, io\nsys.stdout = io.StringIO()`);
         await pyodide.runPythonAsync(code);
-
-        const result = pyodide.runPython("sys.stdout.getvalue()");
-        setOutput(result || "Program finished.");
-      }
-
-      // OTHER LANGUAGES (Remote via Piston)
+        result = pyodide.runPython("sys.stdout.getvalue()");
+      } 
+      
+      // 2. WEB DEV (Simulation)
+      else if (language === "html" || language === "css") {
+        result = "PREVIEW_UPDATED: View changes in the workspace preview.";
+      } 
+      
+      // 3. COMPILED/REMOTES (Piston API)
       else {
-        const response = await fetch(
-          "https://emkc.org/api/v2/piston/execute",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              language: language === "sqlite3" ? "sql" : language,
-              version: "*",
-              files: [{ content: code }],
-            }),
-          }
-        );
+        const res = await fetch("https://emkc.org/api/v2/piston/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            language: language === "sqlite3" ? "sql" : language,
+            version: "*",
+            files: [{ content: code }],
+          }),
+        });
 
-        const data = await response.json();
+        const data = await res.json();
+        
+        // --- CRASH GUARD: Check if data or data.run is missing ---
+        if (!data || !data.run) {
+          throw new Error("Execution engine unreachable. Check connection.");
+        }
 
         if (data.run.stderr) {
-          setError(data.run.stderr);
-        } else {
-          setOutput(data.run.output || "Program finished.");
+          throw new Error(data.run.stderr);
         }
+        
+        result = data.run.output || data.run.stdout || "Program executed with no output.";
       }
-    } catch (err) {
-      setError(err.message || "Execution error.");
-    }
 
-    setIsRunning(false);
+      // Success Path
+      successSound.current.play().catch(() => {});
+      setOutput(`${result}\n\n✨ +25 XP EARNED`);
+
+      // Sync XP and Usage to Database
+      const nextRuns = (user?.dailyExecutions || 0) + 1;
+      setUser(prev => ({ ...prev, dailyExecutions: nextRuns, xp: (prev.xp || 0) + 25 }));
+      
+      updateUserProfile(user.uid, {
+        dailyExecutions: nextRuns,
+        xp: increment(25)
+      });
+
+    } catch (err) { 
+      setError(err.message); 
+    } finally { 
+      setIsRunning(false); 
+    }
   };
 
   return (
     <div style={ui.container}>
       <div style={ui.header}>
-        {language.toUpperCase()} ENGINE
+        <span style={ui.tag}>{language.toUpperCase()} ENGINE | {status}</span>
       </div>
-
-      <div style={ui.editorWrapper}>
+      
+      <div style={ui.scrollArea}>
         <Editor
           value={code}
           onValueChange={setCode}
-          highlight={(code) =>
-            highlight(
-              code,
-              prismLangs[language === "sqlite3" ? "sql" : language] ||
-                prismLangs.python
-            )
-          }
-          padding={20}
-          style={ui.editor}
+          highlight={c => highlight(c, 
+            prismLangs[language === 'sqlite3' ? 'sql' : language === 'html' ? 'markup' : language] || prismLangs.js
+          )}
+          padding={25}
+          style={ui.editorFont}
         />
       </div>
 
-      <div style={ui.buttonArea}>
-        <button onClick={execute} disabled={isRunning} style={ui.button}>
-          {isRunning ? "Running..." : "Run Code"}
+      <div style={ui.footer}>
+        <button onClick={execute} disabled={isRunning} style={ui.runBtn}>
+          {isRunning ? "PROCESSING..." : "RUN CODE"}
         </button>
       </div>
 
       <div style={ui.terminal}>
-        <div style={ui.terminalLabel}>TERMINAL</div>
-
-        {output && (
-          <pre style={ui.stdout}>{output}</pre>
-        )}
-
-        {error && (
-          <pre style={ui.stderr}>{error}</pre>
-        )}
-
-        {!output && !error && (
-          <pre style={ui.idle}>{"> Ready..."}</pre>
-        )}
+        <div style={ui.terminalLabel}>OUTPUT TERMINAL</div>
+        <pre style={{
+          color: error ? '#ef4444' : '#22c55e', 
+          margin: 0, 
+          fontSize: '13px', 
+          whiteSpace: 'pre-wrap',
+          fontFamily: '"Fira Code", monospace'
+        }}>
+          {error ? `❌ ERROR: ${error}` : output || "> ready_"}
+        </pre>
       </div>
     </div>
   );
 };
 
 const ui = {
-  container: {
-    display: "flex",
-    flexDirection: "column",
-    height: "100%",
-    backgroundColor: "#000",
-    borderLeft: "1px solid #1e293b",
-  },
-  header: {
-    padding: "12px 20px",
-    backgroundColor: "#0f172a",
-    color: "#64748b",
-    fontSize: "12px",
-    fontWeight: "bold",
-    borderBottom: "1px solid #1e293b",
-  },
-  editorWrapper: {
-    flex: 1,
-    overflowY: "auto",
-  },
-  editor: {
-    fontFamily: '"Fira Code", monospace',
-    fontSize: 14,
-    minHeight: "100%",
-    backgroundColor: "#000",
-    color: "#fff",
-  },
-  buttonArea: {
-    padding: "15px 20px",
-    borderTop: "1px solid #1e293b",
-    backgroundColor: "#000",
-    display: "flex",
-    justifyContent: "flex-end",
-  },
-  button: {
-    backgroundColor: "#22c55e",
-    color: "#000",
-    border: "none",
-    padding: "10px 25px",
-    borderRadius: "6px",
-    fontWeight: "bold",
-    cursor: "pointer",
-  },
-  terminal: {
-    height: "200px",
-    backgroundColor: "#020617",
-    borderTop: "1px solid #1e293b",
-    padding: "20px",
-    overflowY: "auto",
-  },
-  terminalLabel: {
-    fontSize: "10px",
-    fontWeight: "bold",
-    color: "#475569",
-    marginBottom: "10px",
-  },
-  stdout: {
-    color: "#22c55e",
-    whiteSpace: "pre-wrap",
-    margin: 0,
-  },
-  stderr: {
-    color: "#ef4444",
-    whiteSpace: "pre-wrap",
-    margin: 0,
-  },
-  idle: {
-    color: "#64748b",
-    whiteSpace: "pre-wrap",
-    margin: 0,
-  },
+  container: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#000' },
+  header: { padding: '12px 20px', background: '#0f172a', borderBottom: '1px solid #1e293b' },
+  tag: { fontSize: '10px', color: '#64748b', fontWeight: '900', letterSpacing: '1px' },
+  scrollArea: { flex: 1, overflowY: 'auto' },
+  editorFont: { fontFamily: '"Fira Code", monospace', fontSize: 15, color: '#fff' },
+  footer: { padding: '15px 20px', borderTop: '1px solid #1e293b', textAlign: 'right', background: '#000' },
+  runBtn: { background: '#22c55e', color: '#000', padding: '10px 30px', borderRadius: '4px', fontWeight: '900', border: 'none', cursor: 'pointer', transition: '0.2s' },
+  terminal: { height: '180px', background: '#020617', padding: '20px', borderTop: '1px solid #1e293b', overflowY: 'auto' },
+  terminalLabel: { fontSize: '9px', color: '#475569', fontWeight: 'bold', marginBottom: '10px' }
 };
 
 export default CodeEditor;
