@@ -4,7 +4,7 @@ import { increment } from "firebase/firestore";
 import Editor from "react-simple-code-editor";
 import { highlight, languages as prismLangs } from "prismjs/components/prism-core";
 
-// Full Language Support
+// Required Prism Imports
 import "prismjs/components/prism-clike";
 import "prismjs/components/prism-markup"; 
 import "prismjs/components/prism-css";
@@ -19,7 +19,7 @@ import "prismjs/components/prism-sql";
 import "prismjs/themes/prism-tomorrow.css";
 
 const CodeEditor = ({ user, setUser, setIsPaystackOpen, language }) => {
-  // 1. ALWAYS START EMPTY (Ignored starterCode prop for a clean slate)
+  // 1. FORCED EMPTY STATE: We ignore incoming starterCode to keep it empty
   const [code, setCode] = useState(""); 
   const [output, setOutput] = useState("");
   const [error, setError] = useState("");
@@ -29,7 +29,7 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language }) => {
 
   const isWebDev = language === "html" || language === "css";
 
-  // Preload Python Engine
+  // Preload Python
   useEffect(() => {
     if (language === "python" && !pyodide) {
       const loadPy = async () => {
@@ -47,7 +47,7 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language }) => {
     }
   }, [language, pyodide]);
 
-  // Reset for new language selection
+  // 2. WIPE EVERYTHING ON LANGUAGE SWITCH
   useEffect(() => {
     setCode(""); 
     setOutput("");
@@ -63,60 +63,58 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language }) => {
     setError("");
 
     try {
-      // ENGINE 1: WEB (HTML/CSS)
+      // ENGINE: WEB (HTML/CSS)
       if (isWebDev) {
         setPreviewContent(language === "css" ? `<style>${code}</style>` : code);
-        setOutput("Visual preview updated.");
+        setOutput("Preview updated.");
       } 
       
-      // ENGINE 2: PYTHON (Local)
+      // ENGINE: PYTHON (Local)
       else if (language === "python" && pyodide) {
         await pyodide.runPythonAsync(`import sys, io\nsys.stdout = io.StringIO()`);
         await pyodide.runPythonAsync(code);
         const res = pyodide.runPython("sys.stdout.getvalue()");
-        setOutput(res || "Program finished (no output).");
+        setOutput(res || "Done (no output).");
       } 
 
-      // ENGINE 3: ALL OTHERS (Go, SQL, Java, C++, R, JS, C)
+      // ENGINE: REMOTE (Go, C++, C, R, Java, JS, SQL)
       else {
-        const langConfig = {
-          "c++": { id: "cpp", ver: "10.2.0" },
-          "go": { id: "go", ver: "1.16.2" },
-          "java": { id: "java", ver: "15.0.2" },
-          "sqlite3": { id: "sql", ver: "3.35.4" },
-          "sql": { id: "sql", ver: "3.35.4" },
-          "r": { id: "r", ver: "4.0.2" },
-          "javascript": { id: "javascript", ver: "15.10.0" },
-          "c": { id: "c", ver: "10.2.0" }
+        // We use "*" for versions to prevent the "Invalid Response" error
+        const pistonMap = {
+          "c++": "cpp",
+          "sqlite3": "sql",
+          "javascript": "javascript"
         };
-
-        const target = langConfig[language] || { id: language, ver: "*" };
 
         const response = await fetch("https://emkc.org/api/v2/piston/execute", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            language: target.id,
-            version: target.ver,
+            language: pistonMap[language] || language,
+            version: "*", 
             files: [{ content: code }]
           })
         });
 
         const data = await response.json();
 
-        if (data.run) {
+        // Safety check to prevent the "reading stderr of undefined" crash
+        if (data && data.run) {
           if (data.run.stderr) {
             setError(data.run.stderr);
           } else {
-            // SHOW THE REAL OUTPUT
-            setOutput(data.run.output || "Program finished (no output).");
+            setOutput(data.run.output || "Done (no output).");
           }
+        } else {
+          setError("The execution server is not responding correctly. Check your connection.");
         }
       }
 
-      // Record XP
-      updateUserProfile(user.uid, { dailyExecutions: increment(1), xp: increment(25) });
-      setUser(prev => ({ ...prev, dailyExecutions: (prev.dailyExecutions || 0) + 1, xp: (prev.xp || 0) + 25 }));
+      // Update XP
+      if (user?.uid) {
+        updateUserProfile(user.uid, { dailyExecutions: increment(1), xp: increment(25) });
+        setUser(prev => ({ ...prev, dailyExecutions: (prev.dailyExecutions || 0) + 1, xp: (prev.xp || 0) + 25 }));
+      }
 
     } catch (err) {
       setError(err.message);
@@ -128,7 +126,7 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language }) => {
   return (
     <div style={ui.container}>
       <div style={ui.header}>
-        <span style={ui.tag}>{language.toUpperCase()} ENGINE ACTIVE</span>
+        <span style={ui.tag}>{language.toUpperCase()} ENGINE</span>
       </div>
 
       <div style={ui.scrollArea}>
@@ -138,7 +136,7 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language }) => {
           highlight={c => highlight(c, prismLangs[language === 'html' ? 'markup' : language === 'c++' ? 'cpp' : language] || prismLangs.javascript)}
           padding={25}
           style={ui.editorFont}
-          placeholder="// Type your code here..."
+          placeholder="Write your code here..."
         />
       </div>
 
@@ -149,12 +147,12 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language }) => {
       </div>
 
       <div style={ui.terminal}>
-        <div style={ui.terminalLabel}>{isWebDev ? "BROWSER" : "OUTPUT"}</div>
+        <div style={ui.terminalLabel}>{isWebDev ? "LIVE PREVIEW" : "TERMINAL"}</div>
         {isWebDev ? (
-          <iframe srcDoc={previewContent} style={ui.iframe} title="p" />
+          <iframe srcDoc={previewContent} style={ui.iframe} title="preview" />
         ) : (
           <pre style={{...ui.terminalText, color: error ? "#ef4444" : "#22c55e"}}>
-            {error || output || "> ready_"}
+            {error ? `❌ ERROR:\n${error}` : output || "> ready_"}
           </pre>
         )}
       </div>
@@ -165,18 +163,15 @@ const CodeEditor = ({ user, setUser, setIsPaystackOpen, language }) => {
 const ui = {
   container: { display: "flex", flexDirection: "column", height: "100%", backgroundColor: "#000" },
   header: { padding: "12px 20px", background: "#0f172a", borderBottom: "1px solid #1e293b" },
-  tag: { fontSize: "10px", color: "#64748b", fontWeight: "900" },
+  tag: { fontSize: "10px", color: "#64748b", fontWeight: "900", letterSpacing: "1px" },
   scrollArea: { flex: 1, overflowY: "auto" },
   editorFont: { fontFamily: 'monospace', fontSize: 15, color: "#fff" },
   footer: { padding: "15px 20px", borderTop: "1px solid #1e293b", textAlign: "right" },
   runBtn: { background: "#22c55e", color: "#000", padding: "10px 30px", borderRadius: "4px", fontWeight: "900", border: "none", cursor: "pointer" },
   terminal: { height: "200px", background: "#020617", padding: "20px", borderTop: "1px solid #1e293b", overflowY: "auto" },
-  terminalLabel: { fontSize: "9px", color: "#475569", fontWeight: "bold" },
+  terminalLabel: { fontSize: "9px", color: "#475569", fontWeight: "bold", marginBottom: "10px" },
   terminalText: { margin: 0, fontSize: "13px", whiteSpace: "pre-wrap", fontFamily: 'monospace' },
-  iframe: { width: "100%", height: "100%", border: "none", background: "#fff" }
+  iframe: { width: "100%", height: "100%", border: "none", background: "#fff", borderRadius: "4px" }
 };
 
 export default CodeEditor;
-
-
-
