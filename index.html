@@ -2,13 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ZeninLabs Courses</title>
+    <!-- FIXED VIEWPORT - This was the main cause of mobile issues -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
+    <title>ZeninLabs Courses - Learn Python for Free</title>
+    <meta name="description" content="Best free platform to learn Python with unlimited in-browser code execution" />
+
+    <!-- Pyodide for running Python in the browser -->
     <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
-    
+
+    <!-- If you're using Tailwind (recommended), add this -->
+    <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body>
+  <body class="bg-gray-950 text-white overflow-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
