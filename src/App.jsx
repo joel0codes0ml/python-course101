@@ -41,8 +41,7 @@ export default function App() {
   const [initializing, setInitializing] = useState(true);
   const [leaderboard, setLeaderboard] = useState([]);
   
-  // View State Management
-  const [activeView, setActiveView] = useState("workspace"); // 'workspace' or 'profile'
+  const [activeView, setActiveView] = useState("workspace");
   
   const [activeSector, setActiveSector] = useState("web");
   const [currentLanguage, setCurrentLanguage] = useState(languages.find(l => l.sector === "web"));
@@ -59,7 +58,6 @@ export default function App() {
         try {
           const profile = await getUserProfile(firebaseUser.uid);
           
-          // Check if they need a profile setup, but don't force the screen change
           if (!profile || !profile.setupComplete) {
             setNeedsProfile(true);
           } else {
@@ -121,8 +119,7 @@ export default function App() {
     <PayPalScriptProvider options={{ "client-id": "test", currency: "USD" }}>
       <div style={styles.appContainer}>
         
-        {/* TOP NAVIGATION */}
-        <nav style={styles.nav}>
+        <nav style={styles.nav} className="mobile-nav">
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <Mascot />
             <span style={styles.logo}>ZENIN<span style={{ color: '#ef4444' }}>LABS</span></span>
@@ -135,11 +132,10 @@ export default function App() {
             <div style={styles.streakBadge}>🔥 {user?.streak || 1} DAY STREAK</div>
           </div>
 
-          <div style={styles.navRight}>
+          <div style={styles.navRight} className="mobile-nav-right">
             <div style={styles.syncContainer}><div style={styles.syncDot} /><span>SYNCED</span></div>
             {!user?.isPro && <span style={styles.runsText}>{runsLeft}/{RUN_LIMIT} RUNS LEFT</span>}
             
-            {/* NEW PROFILE TOGGLE BUTTON */}
             <button 
               onClick={() => setActiveView(activeView === 'profile' ? 'workspace' : 'profile')} 
               style={activeView === 'profile' ? styles.profileBtnActive : styles.profileBtn}
@@ -150,7 +146,6 @@ export default function App() {
                   style={styles.navAvatar} 
                   alt="Profile"
                 />
-                {/* Red dot notification if profile is incomplete */}
                 {needsProfile && <div style={styles.notificationDot} />}
               </div>
               <div style={styles.navUserInfo}>
@@ -163,7 +158,6 @@ export default function App() {
           </div>
         </nav>
 
-        {/* DYNAMIC VIEW RENDERING */}
         {activeView === 'profile' ? (
           <div style={{ flex: 1, overflow: 'auto' }}>
             <Profile onComplete={() => {
@@ -172,8 +166,8 @@ export default function App() {
             }} />
           </div>
         ) : (
-          <div style={styles.workspace}>
-            <aside style={styles.sidebar}>
+          <div style={styles.workspace} className="mobile-workspace">
+            <aside style={styles.sidebar} className="mobile-sidebar">
               <div style={styles.sectorScroll}>
                 {SECTORS.map(s => (
                   <button 
@@ -213,7 +207,7 @@ export default function App() {
               </div>
             </aside>
 
-            <main style={styles.lessonPanel}>
+            <main style={styles.lessonPanel} className="mobile-lesson">
               <div style={styles.moduleTag}>{currentLanguage?.name.toUpperCase()} • {currentLessonIndex + 1}</div>
               <h1 style={styles.lessonTitle}>{current.title}</h1>
               <div style={styles.contentBox}>
@@ -234,7 +228,7 @@ export default function App() {
               </div>
             </main>
 
-            <section style={styles.editorPanel}>
+            <section style={styles.editorPanel} className="mobile-editor">
               <CodeEditor 
                 user={user} 
                 setUser={setUser} 
@@ -247,7 +241,6 @@ export default function App() {
           </div>
         )}
 
-        {/* MODALS */}
         {isPaystackOpen && (
           <div style={styles.modalOverlay}>
             <div style={styles.modalCard}>
@@ -290,7 +283,19 @@ export default function App() {
           </div>
         )}
       </div>
-      <style>{`.sh-logo { animation: spin 4s linear infinite; } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        .sh-logo { animation: spin 4s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+          .mobile-workspace { flex-direction: column !important; overflow-y: auto !important; overflow-x: hidden !important; }
+          .mobile-sidebar { width: 100% !important; flex-shrink: 0; }
+          .mobile-lesson { flex: none !important; width: 100% !important; padding: 20px !important; border-right: none !important; border-bottom: 1px solid #1e293b; box-sizing: border-box; }
+          .mobile-editor { flex: none !important; width: 100% !important; height: 85vh; }
+          .mobile-nav { height: auto !important; flex-wrap: wrap; gap: 8px; padding: 8px 12px !important; }
+          .mobile-nav-right { gap: 8px !important; flex-wrap: wrap; }
+        }
+      `}</style>
     </PayPalScriptProvider>
   );
 }
@@ -325,8 +330,6 @@ const styles = {
   syncContainer: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px', color: '#475569', fontWeight: 'bold' },
   syncDot: { width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', boxShadow: '0 0 8px #22c55e' },
   runsText: { color: '#475569', fontSize: '11px', fontWeight: 'bold' },
-  
-  // NEW PROFILE BUTTON STYLES
   profileBtn: { display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid #1e293b', padding: '4px 12px 4px 6px', borderRadius: '30px', cursor: 'pointer', transition: 'all 0.2s ease' },
   profileBtnActive: { display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(34, 197, 94, 0.1)', border: '1px solid #22c55e', padding: '4px 12px 4px 6px', borderRadius: '30px', cursor: 'pointer', transition: 'all 0.2s ease' },
   navAvatar: { width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#0f172a', border: '1px solid #334155', objectFit: 'cover' },
@@ -334,7 +337,6 @@ const styles = {
   navUsername: { fontSize: '10px', fontWeight: '900', color: '#f8fafc', letterSpacing: '0.5px' },
   navXP: { fontSize: '9px', fontWeight: 'bold', color: '#22c55e' },
   notificationDot: { position: 'absolute', top: -2, right: -2, width: '10px', height: '10px', backgroundColor: '#ef4444', borderRadius: '50%', border: '2px solid #000' },
-  
   logoutBtn: { background: 'none', border: 'none', color: '#475569', fontSize: '11px', cursor: 'pointer', paddingLeft: '10px', borderLeft: '1px solid #1e293b' },
   workspace: { display: 'flex', flex: 1, overflow: 'hidden' },
   sidebar: { width: '220px', backgroundColor: '#000', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column' },
@@ -372,5 +374,3 @@ const styles = {
   tierRow: { display: 'flex', justifyContent: 'space-between', fontSize: '10px', padding: '8px 6px', borderBottom: '1px solid #1e293b' },
   loading: { height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020617', color: '#ef4444' }
 };
-
-
